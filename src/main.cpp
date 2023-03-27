@@ -6,6 +6,7 @@
 #include "hardware/regs/rosc.h"
 #include "hardware/sync.h"
 #include "headers/Emotion.hpp"
+#include "headers/FanController.hpp"
 #include "headers/Logger.hpp"
 #include "headers/Max7219Driver.hpp"
 #include "headers/PolledBoopCode.hpp"
@@ -15,6 +16,8 @@
 extern Logger myLogger;  // Allows for different debug levels
 
 Max7219Driver myDriver(1);  // Initialize with brightness 1
+
+FanController myFan(16, 0);
 
 // -------- Emotes for the face --------
 Emotion Normal("Normal", eye, nose, maw);
@@ -53,7 +56,7 @@ int main() {
 	myBooper.start();        // Start BoopCode protocol
 
 	repeating_timer_t changeTimer;                                // Timer for emote cycle demo
-	add_repeating_timer_ms(-1000, emoteChange, 0, &changeTimer);  // Schedule emote cycle
+	add_repeating_timer_ms(-10000, emoteChange, 0, &changeTimer);  // Schedule emote cycle
 
 	while (true) {
 		if (!blinkAnimation.isScheduled()) {
@@ -86,22 +89,25 @@ void seed_random_from_rosc() {
 /* \brief Handles the emote cycling demo.
  * \param rt Repeating timer instance, passed automatically
  * \return Whether or not to re-run the function
-*/
+ */
 bool emoteChange(repeating_timer_t *rt) {
 	switch (emote) {
 		case 0:
 			currentAnim = &Normal;
 			emote++;
+			myFan.setSpeed(0);
 			break;
 
 		case 1:
 			currentAnim = &Suprise;
 			emote++;
+			myFan.setSpeed(0.5);
 			break;
 
 		case 2:
 			currentAnim = &VwV;
 			emote = 0;
+			myFan.setSpeed(1);
 			break;
 
 		default:
