@@ -1,6 +1,6 @@
 #pragma once
-#ifndef MAXDRIVER_DEFS
-#define MAXDRIVER_DEFS
+#ifndef _MAXDRIVER_DEFS
+#define _MAXDRIVER_DEFS
 
 #include <stdio.h>
 
@@ -17,6 +17,8 @@
 #define SIDES 2
 
 #define NUM_PANELS (EYE_PANELS + NOSE_PANELS + MOUTH_PANELS) * SIDES
+
+#define SPI_BAUDRATE 10000000
 
 // #define NUM_PANELS 7
 #define ROWS_PER_PANEL 8
@@ -35,8 +37,6 @@ class Max7219Driver {
 	bool initializeSPI();
 	void destroySPI();
 	uint8_t brightness;
-
-	semaphore_t sem;
 
 	inline void setCS();
 	inline void clearCS();

@@ -1,5 +1,5 @@
 if (TARGET tinyusb_device)
-    add_executable(faceDriver main.cpp sources/Logger.cpp sources/Max7219Driver.cpp sources/Animation.cpp sources/Emotion.cpp)
+    add_executable(faceDriver main.cpp sources/Logger.cpp sources/Max7219Driver.cpp sources/Animation.cpp sources/Emotion.cpp sources/BoopCode.cpp sources/PolledBoopCode.cpp)
     # pico_generate_pio_header(faceDriver ${CMAKE_CURRENT_LIST_DIR}/ws2812.pio OUTPUT_DIR ${CMAKE_CURRENT_LIST_DIR})
 
     # pull in common dependencies

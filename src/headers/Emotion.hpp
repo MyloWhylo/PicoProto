@@ -37,11 +37,6 @@ class Emotion {
 	void drawEyes();
 	void drawNose();
 	void drawMaw();
-
-	uint8_t getTimer(uint8_t timer);
-	void setTimer(uint8_t timer, uint8_t value);
-	void incTimer(uint8_t timer);
-	void clearTimer(uint8_t timer);
 };
 
 #endif
