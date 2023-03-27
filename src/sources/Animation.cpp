@@ -87,9 +87,13 @@ void Animation::setRunning(bool status) {
 	this->animRunning = status;
 	if (status == false) {
 		this->animScheduled = false;
+		this->alarmID = 0;
 	}
 }
 
+/* \brief Check if an animation is scheduled to run. Note that the scheduled status only resets once the animation is finished.
+ * \return Whether the animation is scheduled
+ */
 bool Animation::isScheduled() {
 	return this->animScheduled;
 }

@@ -36,13 +36,9 @@ int main() {
 	seed_random_from_rosc();  // Seed random for eye blinks
 	stdio_init_all();         // Initialize STDIO
 
-	// gpio_init(PICO_DEFAULT_LED_PIN);
-	// gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 	// while (!tud_cdc_connected()) {  // Wait for USB to connect
 	// 	sleep_ms(100);
-	// 	gpio_xor_mask(1 << PICO_DEFAULT_LED_PIN);  // hehe toggle
 	// }
-	// gpio_put(PICO_DEFAULT_LED_PIN, false);
 
 	if (myDriver.initializeDisplays()) {
 		myLogger.log("Displays successfully initiailized!\n");
