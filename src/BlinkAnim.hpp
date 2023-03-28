@@ -40,7 +40,7 @@ int64_t blinkAnim(alarm_id_t id, void* user_data) {
 
 	driver->display();  // Display the updated eyes on the displays
 
-	if (blinkStep != 17) {  // If the animation isn't done yet, increment timer and reschedule
+	if (blinkStep < 17) {  // If the animation isn't done yet, increment timer and reschedule
 		anim->incTimer(BLINK_STEP_INDEX);
 		return BLINK_CYCLE_TIME;
 	} else {  // Otherwise, set that we're stopped, clear the timer, and don't reschedule

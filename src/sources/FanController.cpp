@@ -56,7 +56,7 @@ void FanController::startFan(float speed) {
 void FanController::stopFan() {
    if (this->enabled == true) {
       this->enabled == false;
-      pwm_set_chan_level(this->sliceNum, this->pwmChannel, 0);
+      pwm_set_chan_level(this->sliceNum, this->pwmChannel, this->speedToCount(0));
    }
 }
 

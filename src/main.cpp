@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "BlinkAnim.hpp"
+#include "GlitchAnim.hpp"
 #include "Icons.hpp"
 #include "hardware/regs/rosc.h"
 #include "hardware/sync.h"
@@ -13,11 +14,9 @@
 #include "pico/stdlib.h"
 #include "pico/time.h"
 
-extern Logger myLogger;  // Allows for different debug levels
-
+extern Logger myLogger;     // Allows for different debug levels
 Max7219Driver myDriver(1);  // Initialize with brightness 1
-
-FanController myFan(16, 0);
+FanController myFan(16, 0.5);
 
 // -------- Emotes for the face --------
 Emotion Normal("Normal", eye, nose, maw);
@@ -27,13 +26,16 @@ Emotion VwV("VwV", vwv, nose, maw);
 Emotion *currentAnim = &Normal;
 uint8_t emote = 0;
 
-Animation blinkAnimation(blinkAnim, &currentAnim);
+Animation blinkAnimation(blinkAnim, &currentAnim);    // blinkAnim is located in BlinkAnim.hpp
+Animation glitchAnimation(glitchAnim, &currentAnim);  // glitchAnim is located in glitchAnim.hpp
 
 // -------- BoopCode thing? --------
 PolledBoopCode myBooper;
 
 void seed_random_from_rosc();
 bool emoteChange(repeating_timer_t *rt);
+
+bool glitchy = false;
 
 int main() {
 	seed_random_from_rosc();  // Seed random for eye blinks
@@ -55,14 +57,20 @@ int main() {
 	myDriver.display();      // Display framebuffer on displays
 	myBooper.start();        // Start BoopCode protocol
 
-	repeating_timer_t changeTimer;                                // Timer for emote cycle demo
-	add_repeating_timer_ms(-10000, emoteChange, 0, &changeTimer);  // Schedule emote cycle
+	repeating_timer_t changeTimer;                                 // Timer for emote cycle demo
+	add_repeating_timer_ms(-5000, emoteChange, 0, &changeTimer);  // Schedule emote cycle
 
 	while (true) {
 		if (!blinkAnimation.isScheduled()) {
 			int nextBlink = (rand() & 0x0FFF) + 2000;  // This is an awful random number generator. But, who cares.
 			myLogger.logDebug("setting next blink for %d ms in the future\n", nextBlink);
 			blinkAnimation.scheduleAnimation(nextBlink);  // Start blink animation
+		}
+
+		if (glitchy && !glitchAnimation.isScheduled()) {
+			int nextGlitch = (rand() & 0x03FF) + 500;  // This is an awful random number generator. But, who cares.
+			myLogger.logDebug("setting next glitch for %d ms in the future\n", nextGlitch);
+			glitchAnimation.scheduleAnimation(nextGlitch);  // Start glitch animation
 		}
 	}
 	myBooper.stop();  // Stop BoopCode Protocol
@@ -95,19 +103,23 @@ bool emoteChange(repeating_timer_t *rt) {
 		case 0:
 			currentAnim = &Normal;
 			emote++;
-			myFan.setSpeed(0);
+			myFan.stopFan();
 			break;
 
 		case 1:
 			currentAnim = &Suprise;
 			emote++;
-			myFan.setSpeed(0.5);
+			myFan.startFan();
 			break;
 
 		case 2:
 			currentAnim = &VwV;
+			emote++;
+			break;
+
+		case 3:
+			glitchy = !glitchy;
 			emote = 0;
-			myFan.setSpeed(1);
 			break;
 
 		default:
@@ -115,13 +127,23 @@ bool emoteChange(repeating_timer_t *rt) {
 			break;
 	}
 
+	bool drawEyes = true;
+	bool drawMaw = true;
+	bool drawNose = true;
+
 	if (blinkAnimation.isRunning()) {
-		currentAnim->drawMaw();
-		currentAnim->drawNose();
-	} else {
-		currentAnim->drawAll();
-		myDriver.display();
+		drawEyes = false;
 	}
+
+	if (glitchAnimation.isRunning()) {
+		drawMaw = false;
+	}
+
+	if (drawEyes) currentAnim->drawEyes();
+	if (drawMaw) currentAnim->drawMaw();
+	if (drawNose) currentAnim->drawNose();
+
+	myDriver.display();
 
 	return true;
 }
