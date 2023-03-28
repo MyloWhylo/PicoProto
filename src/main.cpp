@@ -68,7 +68,7 @@ int main() {
 		}
 
 		if (glitchy && !glitchAnimation.isScheduled()) {
-			int nextGlitch = (rand() & 0x03FF) + 500;  // This is an awful random number generator. But, who cares.
+			int nextGlitch = (rand() & 0x03FF) + 1000;  // This is an awful random number generator. But, who cares.
 			myLogger.logDebug("setting next glitch for %d ms in the future\n", nextGlitch);
 			glitchAnimation.scheduleAnimation(nextGlitch);  // Start glitch animation
 		}
