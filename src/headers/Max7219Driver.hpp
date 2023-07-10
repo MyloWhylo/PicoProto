@@ -6,10 +6,12 @@
 
 #include "Logger.hpp"
 #include "hardware/resets.h"
+#include "hardware/gpio.h"
 #include "hardware/spi.h"
 #include "pico/sync.h"
 #include "pico/bit_ops.h"
 #include "pico/stdlib.h"
+#include "HiFiProtogenPinout.hpp"
 
 #define EYE_PANELS 2
 #define NOSE_PANELS 1
@@ -18,7 +20,7 @@
 
 #define NUM_PANELS (EYE_PANELS + NOSE_PANELS + MOUTH_PANELS) * SIDES
 
-#define SPI_BAUDRATE 10000000
+#define SPI_BAUDRATE 1000000
 
 // #define NUM_PANELS 7
 #define ROWS_PER_PANEL 8
@@ -51,6 +53,8 @@ class Max7219Driver {
 	Max7219Driver(uint8_t brightness = 8);
 	~Max7219Driver();
 	bool initializeDisplays();
+	void setBrightness(uint8_t brightness);
+	uint8_t getBrightness();
 	void setSegment(uint8_t row, uint8_t col, uint8_t value);
 	void displayBitmap(const uint8_t* icon, uint8_t width, uint8_t panelNum, bool flipHorizontal, bool flipVertical);
 	void display();

@@ -55,7 +55,7 @@ int64_t glitchAnim(alarm_id_t id, void* user_data) {
 	if (glitchStep < 2) {  // If the animation isn't done yet, increment timer and reschedule
 		anim->incTimer(GLITCH_STEP_INDEX);
 		int32_t nextCycleTime = ((rand() & 0xFFFF) * -4) + GLITCH_BASE_TIME;
-		printf("Next time: %d\n", nextCycleTime);
+		myLogger.logDebug("Next time: %d\n", nextCycleTime);
 		return nextCycleTime;
 	} else {  // Otherwise, set that we're stopped, clear the timer, and don't reschedule
 		anim->setRunning(false);

@@ -33,6 +33,7 @@ class Emotion {
 	Max7219Driver* driver;
 	Emotion(std::string emoteName, const uint8_t* eyes, const uint8_t* nose, const uint8_t* maw);
 	~Emotion();
+	std::string getName();
 	void drawAll();
 	void drawEyes();
 	void drawNose();

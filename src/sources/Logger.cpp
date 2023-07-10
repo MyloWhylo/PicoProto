@@ -47,4 +47,4 @@ void Logger::logAbsurd(const char *fmt, ...) {
 	va_end(args);
 }
 
-Logger myLogger(absurd);
+Logger myLogger(trace);

@@ -18,6 +18,11 @@ Emotion::Emotion(std::string emoteName, const uint8_t* eyes, const uint8_t* nose
 Emotion::~Emotion() {
 }
 
+
+std::string Emotion::getName() {
+	return this->name;
+}
+
 // Draws all parts of an emote (eyes, maw, and nose).
 void Emotion::drawAll() {
 	this->drawEyes();

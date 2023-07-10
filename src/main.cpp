@@ -1,27 +1,39 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "headers/Logger.hpp"
+extern Logger myLogger;  // Allows for different debug levels
+
 #include "BlinkAnim.hpp"
 #include "GlitchAnim.hpp"
 #include "Icons.hpp"
+#include "hardware/gpio.h"
 #include "hardware/regs/rosc.h"
-#include "hardware/sync.h"
+#include "hardware/uart.h"
+#include "headers/CheekFinAnimator.hpp"
 #include "headers/Emotion.hpp"
 #include "headers/FanController.hpp"
-#include "headers/Logger.hpp"
+#include "headers/HiFiProtogenPinout.hpp"
 #include "headers/Max7219Driver.hpp"
-#include "headers/PolledBoopCode.hpp"
+#include "headers/SK6812.hpp"
+#include "headers/TinyLED.hpp"
+// #include "headers/Badger.hpp"
+// #include "headers/PolledBoopCode.hpp"
 #include "pico/stdlib.h"
 #include "pico/time.h"
 
-extern Logger myLogger;     // Allows for different debug levels
-Max7219Driver myDriver(1);  // Initialize with brightness 1
-FanController myFan(16, 0.5);
+Max7219Driver myDriver(15);  // Initialize with brightness 1
+// FanController myFan(FAN_PWM, 50);
+
+CheekFinAnimator cheekAnim;
+TinyLED statusLED(true);
 
 // -------- Emotes for the face --------
 Emotion Normal("Normal", eye, nose, maw);
 Emotion Suprise("Suprised", Spooked, nose, maw);
 Emotion VwV("VwV", vwv, nose, maw);
+
+Emotion allEmotes[] = {Normal, Suprise, VwV};
 
 Emotion *currentAnim = &Normal;
 uint8_t emote = 0;
@@ -30,12 +42,14 @@ Animation blinkAnimation(blinkAnim, &currentAnim);    // blinkAnim is located in
 Animation glitchAnimation(glitchAnim, &currentAnim);  // glitchAnim is located in glitchAnim.hpp
 
 // -------- BoopCode thing? --------
-PolledBoopCode myBooper;
+// PolledBoopCode myBooper;
 
 void seed_random_from_rosc();
-bool emoteChange(repeating_timer_t *rt);
+void emoteChange();
+bool sendMsg(repeating_timer_t *rt);
 
 bool glitchy = false;
+volatile bool linkEstablished = false;
 
 int main() {
 	seed_random_from_rosc();  // Seed random for eye blinks
@@ -44,21 +58,31 @@ int main() {
 	// while (!tud_cdc_connected()) {  // Wait for USB to connect
 	// 	sleep_ms(100);
 	// }
+	sleep_ms(1000);
+	statusLED.setColor(1.0, 1.0, 0.0);
+	cheekAnim.bootAnimation();
 
 	if (myDriver.initializeDisplays()) {
 		myLogger.log("Displays successfully initiailized!\n");
 	} else {
 		myLogger.log("Displays failed to initialize!");
+		while (true) {
+			statusLED.setColor(1.0f, 0.0f, 0.0f);
+			sleep_ms(500);
+			statusLED.setColor(0.0f, 0.0f, 0.0f);
+			sleep_ms(500);
+		}
 	}
+
+	statusLED.setColor(0.0f, 0.25f, 0.0f);
 
 	myLogger.log("Actual SPI baudrate set: %u\n", spi_get_baudrate(spi0));
 
 	currentAnim->drawAll();  // Draw all of animation to framebuffer
 	myDriver.display();      // Display framebuffer on displays
-	myBooper.start();        // Start BoopCode protocol
 
-	repeating_timer_t changeTimer;                                 // Timer for emote cycle demo
-	add_repeating_timer_ms(-5000, emoteChange, 0, &changeTimer);  // Schedule emote cycle
+	// repeating_timer_t linkStart;                           // Timer for emote cycle demo
+	// add_repeating_timer_ms(-500, sendMsg, 0, &linkStart);  // Schedule emote cycle
 
 	while (true) {
 		if (!blinkAnimation.isScheduled()) {
@@ -73,7 +97,6 @@ int main() {
 			glitchAnimation.scheduleAnimation(nextGlitch);  // Start glitch animation
 		}
 	}
-	myBooper.stop();  // Stop BoopCode Protocol
 }
 
 // -------- Copied from the pi pico forum, seeds random from rosc --------
@@ -98,52 +121,48 @@ void seed_random_from_rosc() {
  * \param rt Repeating timer instance, passed automatically
  * \return Whether or not to re-run the function
  */
-bool emoteChange(repeating_timer_t *rt) {
-	switch (emote) {
-		case 0:
-			currentAnim = &Normal;
-			emote++;
-			myFan.stopFan();
-			break;
+// void emoteChange() {
+// 	switch (emote) {
+// 		case 0:
+// 			currentAnim = &Normal;
+// 			break;
 
-		case 1:
-			currentAnim = &Suprise;
-			emote++;
-			myFan.startFan();
-			break;
+// 		case 1:
+// 			currentAnim = &Suprise;
+// 			break;
 
-		case 2:
-			currentAnim = &VwV;
-			emote++;
-			break;
+// 		case 2:
+// 			currentAnim = &VwV;
+// 			break;
 
-		case 3:
-			glitchy = !glitchy;
-			emote = 0;
-			break;
+// 		default:
+// 			currentAnim = &Normal;
+// 			emote = 0;
+// 			break;
+// 	}
 
-		default:
-			emote = 0;
-			break;
-	}
+// 	bool drawEyes = true;
+// 	bool drawMaw = true;
+// 	bool drawNose = true;
 
-	bool drawEyes = true;
-	bool drawMaw = true;
-	bool drawNose = true;
+// 	if (blinkAnimation.isRunning()) {
+// 		drawEyes = false;
+// 	}
 
-	if (blinkAnimation.isRunning()) {
-		drawEyes = false;
-	}
+// 	if (glitchAnimation.isRunning()) {
+// 		drawMaw = false;
+// 	}
 
-	if (glitchAnimation.isRunning()) {
-		drawMaw = false;
-	}
+// 	if (drawEyes) currentAnim->drawEyes();
+// 	if (drawMaw) currentAnim->drawMaw();
+// 	if (drawNose) currentAnim->drawNose();
 
-	if (drawEyes) currentAnim->drawEyes();
-	if (drawMaw) currentAnim->drawMaw();
-	if (drawNose) currentAnim->drawNose();
+// 	myDriver.display();
+// }
 
-	myDriver.display();
-
-	return true;
-}
+// bool sendMsg(repeating_timer_t *rt) {
+// 	if (linkEstablished) return false;
+// 	myLogger.logDebug("Sending character\n");
+// 	uart_putc_raw(uart0, 'B');
+// 	return true;
+// }
