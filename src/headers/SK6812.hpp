@@ -6,16 +6,16 @@
 #include <stdio.h>
 
 #include "../sk6812.pio.h"
+#include "Gamma.hpp"
 #include "Logger.hpp"
 #include "hardware/clocks.h"
 #include "hardware/dma.h"
 #include "hardware/pio.h"
 #include "pico/stdlib.h"
 #include "pico/time.h"
-#include "Gamma.hpp"
 
 #define PIXEL_CLOCK 800000.0f
-#define PIXEL_TIME 1.25f
+#define PIXEL_TIME 1.2f
 #define BITS_PER_PIXEL 32
 #define RESET_TIME 80
 
@@ -39,7 +39,7 @@ class PixelString {
 	Pixel* frontPage;
 	Pixel* backPage;
 
-	uint64_t timeBetweenFrames;
+	float timeBetweenFrames;
 	absolute_time_t nextFrameTime = nil_time;
 
 	float brightness = 1.0f;
@@ -64,11 +64,10 @@ class PixelString {
 
 	void setPixelRaw(uint index, uint32_t hex);
 	void setPixelRaw(uint index, uint8_t r, uint8_t g, uint8_t b);
-	
+
 	void setBrightness(uint newBright);
 	void display();
 	bool isBusy();
-
 };
 
 // I need this array to be contiguous so that the DMA works properly

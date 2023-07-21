@@ -30,8 +30,11 @@ class Emotion {
 	bool animRunning[8];
 
   public:
+	bool canGlitch;
+	bool canBlink;
+
 	Max7219Driver* driver;
-	Emotion(std::string emoteName, const uint8_t* eyes, const uint8_t* nose, const uint8_t* maw);
+	Emotion(std::string emoteName, const uint8_t* eyes, const uint8_t* nose, const uint8_t* maw, bool glitch = false, bool blink = true);
 	~Emotion();
 	std::string getName();
 	void drawAll();

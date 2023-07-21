@@ -87,7 +87,7 @@ void PixelString::display() {
 	this->frontPage = tmp;
 
 	dma_channel_set_read_addr(this->dmaChannel, this->frontPage, true);
-	this->nextFrameTime = make_timeout_time_us(this->timeBetweenFrames);
+	this->nextFrameTime = make_timeout_time_us((uint64_t) this->timeBetweenFrames);
 }
 
 bool PixelString::isBusy() {

@@ -94,26 +94,21 @@ bool Max7219Driver::initializeDisplays() {
 	// Clear framebuffer
 	for (uint_fast8_t ii = 0; ii < ROWS_PER_PANEL; ii++) {
 		for (uint_fast8_t jj = 0; jj < NUM_PANELS * COLS_PER_PANEL; jj++) {
-			this->displayArray[ii][jj] = 0;
+			this->setSegment(ii, jj, 0x00);
 		}
-	}
-
-	// Clear output buffer
-	for (uint_fast8_t ii = 0; ii < NUM_PANELS; ii++) {
-		this->outputBuf[ii] = 0;
 	}
 
 	myLogger.logDebug("Initializing SPI\n");
 	retVal &= this->initializeSPI();  // Ensure SPI initializes properly
 
 	myLogger.logDebug("Initializing displays...\n");
+	this->display();                                         // Clear the display registers
 	this->setAllDisplays(CMD_SHUTDOWN, 0);                   // Blank the displays
 	this->setAllDisplays(CMD_DISPLAYTEST, 0);                // Disable display test
-	this->setAllDisplays(CMD_SCANLIMIT, 7);                  // Enable all rows
 	this->setAllDisplays(CMD_DECODEMODE, 0);                 // Disable BCD decoding
 	this->setAllDisplays(CMD_BRIGHTNESS, this->brightness);  // Set display brightness
-	this->display();
-	this->setAllDisplays(CMD_SHUTDOWN, 1);  // Re-Enable displays
+	this->setAllDisplays(CMD_SCANLIMIT, 7);                  // Enable all rows
+	this->setAllDisplays(CMD_SHUTDOWN, 1);                   // Re-Enable displays
 
 	return retVal;
 }
@@ -165,11 +160,11 @@ void Max7219Driver::displayBitmap(const uint8_t* icon, uint8_t width, uint8_t pa
 /* \brief Writes entire framebuffer to display.
  */
 void Max7219Driver::display() {
-	this->setAllDisplays(CMD_DISPLAYTEST, 0);                // Disable display test
-	this->setAllDisplays(CMD_SCANLIMIT, 7);                  // Enable all rows
-	this->setAllDisplays(CMD_DECODEMODE, 0);                 // Disable BCD decoding
-	this->setAllDisplays(CMD_BRIGHTNESS, this->brightness);  // Set display brightness
-	
+	// this->setAllDisplays(CMD_DISPLAYTEST, 0);                // Disable display test
+	// this->setAllDisplays(CMD_SCANLIMIT, 7);                  // Enable all rows
+	// this->setAllDisplays(CMD_DECODEMODE, 0);                 // Disable BCD decoding
+	// this->setAllDisplays(CMD_BRIGHTNESS, this->brightness);  // Set display brightness
+
 	for (uint_fast8_t ii = 0; ii < ROWS_PER_PANEL; ii++) {
 		for (uint_fast8_t jj = 0; jj < NUM_PANELS; jj++) {
 			this->outputBuf[jj] = ((CMD_DIGIT_START + ii) << 8) | this->displayArray[ii][jj];
@@ -177,7 +172,7 @@ void Max7219Driver::display() {
 		this->sendData();
 	}
 
-	this->setAllDisplays(CMD_SHUTDOWN, 1);  // Re-Enable displays
+	// this->setAllDisplays(CMD_SHUTDOWN, 1);  // Re-Enable displays
 }
 
 /* \brief Sets the brightness on the displays

@@ -24,7 +24,7 @@
 #define BOOP_SDA 26
 #define BOOP_SCL 27
 
-#define FAN_TACH 29
-#define FAN_PWM 28
+#define FAN_TACH 28
+#define FAN_PWM 29
 
 #endif

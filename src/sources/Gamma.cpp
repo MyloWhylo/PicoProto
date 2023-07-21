@@ -1,4 +1,5 @@
 #include "../headers/Gamma.hpp"
+
 #include "../headers/Logger.hpp"
 
 extern Logger myLogger;
@@ -35,10 +36,9 @@ uint16_t floatToGamma(float in, uint16_t max_value) {
 	if (in > 1.0f) in = 1.0f;
 	if (in < 0.0f) in = 0.0f;
 
-	myLogger.logTrace("Converting float to gamma. In: %f, max: %d\n", in, max_value);
 	uint16_t retVal = (uint16_t)(powf(in, 2.8f) * max_value + 0.5f);
-	myLogger.logTrace("Powf: %f, retVal: %d\n", powf(in, 2.8f), retVal);
-	
 
+	myLogger.logTrace("Converting float to gamma. In: %f, max: %d\n", in, max_value);
+	myLogger.logTrace("Powf: %f, retVal: %d\n", powf(in, 2.8f), retVal);
 	return retVal;
 }

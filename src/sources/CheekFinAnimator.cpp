@@ -4,6 +4,7 @@ extern Logger myLogger;
 CheekFinAnimator::CheekFinAnimator() {
 	myLogger.logDebug("\nInitializing Cheek Fin Animator\n");
 	this->ourString.init();
+	this->ourString.setBrightness(256);
 	this->ourString.clear();
 	this->ourString.display();
 }
@@ -11,12 +12,12 @@ CheekFinAnimator::CheekFinAnimator() {
 CheekFinAnimator::~CheekFinAnimator() {
 }
 
-inline void CheekFinAnimator::setSameOnBothCheeks(uint led, bool respectFront, uint32_t hex) {
+inline void CheekFinAnimator::setSameOnBothCheeks(int led, bool respectFront, uint32_t hex) {
 	this->setLeftCheekColor(led, respectFront, hex);
 	this->setRightCheekColor(led, respectFront, hex);
 }
 
-inline void CheekFinAnimator::setSameOnBothCheeks(uint led, bool respectFront, uint8_t r, uint8_t g, uint8_t b) {
+inline void CheekFinAnimator::setSameOnBothCheeks(int led, bool respectFront, uint8_t r, uint8_t g, uint8_t b) {
 	this->setLeftCheekColor(led, respectFront, r, g, b);
 	this->setRightCheekColor(led, respectFront, r, g, b);
 }
@@ -36,8 +37,6 @@ void CheekFinAnimator::setLeftCheekColor(uint led, bool respectFront, uint32_t h
 	}
 }
 
-
-
 void CheekFinAnimator::setRightCheekColor(uint led, bool respectFront, uint8_t r, uint8_t g, uint8_t b) {
 	this->ourString.setPixel(led, r, g, b);
 }
@@ -55,7 +54,7 @@ void CheekFinAnimator::setLeftCheekColor(uint led, bool respectFront, uint8_t r,
 
 void CheekFinAnimator::bootAnimation() {
 	for (int activePixel = 0; activePixel < LEDS_PER_PANEL; activePixel++) {
-		for (float step = 0.0f; step < 1.0f; step += 0.01f) {
+		for (float step = 0.0f; step < 1.0f; step += 0.05f) {
 			ourString.clear();
 
 			for (int ii = 0; ii < activePixel; ii++) {
@@ -66,7 +65,7 @@ void CheekFinAnimator::bootAnimation() {
 			uint8_t goldG = GOLD_COLOR_G * step;
 			uint8_t goldB = GOLD_COLOR_B * step;
 
-			this->setSameOnBothCheeks(activePixel, true,  goldR, goldG, goldB);
+			this->setSameOnBothCheeks(activePixel, true, goldR, goldG, goldB);
 
 			ourString.display();
 			sleep_ms(1);
@@ -74,7 +73,7 @@ void CheekFinAnimator::bootAnimation() {
 	}
 
 	for (int activePixel = 0; activePixel < LEDS_PER_PANEL; activePixel++) {
-		for (float step = 1.0f; step >= 0.0f; step -= 0.01f) {
+		for (float step = 1.0f; step >= 0.0f; step -= 0.05f) {
 			ourString.clear();
 
 			uint8_t goldR = GOLD_COLOR_R * step;
@@ -92,8 +91,10 @@ void CheekFinAnimator::bootAnimation() {
 		}
 	}
 
-	myLogger.logTrace("Adding Repeating Timer\n");
-	add_repeating_timer_ms(-100, updateLEDs, this, &(this->thisTimer));  // Schedule emote cycle
+	// myLogger.logDebug("Cheek anim running on core %d\n", get_core_num());
+	// myLogger.logTrace("Adding Repeating Timer\n");
+	// this->thisPool = alarm_pool_create_with_unused_hardware_alarm(1);
+	// alarm_pool_add_repeating_timer_ms(this->thisPool, -5, updateLEDs, this, &(this->thisTimer));  // Schedule emote cycle
 
 	// sleep_ms(250);
 	// for (int ii = 0; ii < NUM_CHEEK_LEDS; ii++) {
@@ -102,18 +103,45 @@ void CheekFinAnimator::bootAnimation() {
 	// ourString.display();
 }
 
+inline float CheekFinAnimator::animationFunction(int64_t step, uint led) {
+	float xVal = (step / (10e6 / ANIMATION_STEP_MAX)) + led;
+	float cosVal = cosf((M_PI * xVal) / 2.666666666666666) / 2.0f;
+
+	return cosVal + 0.5f;
+}
+
+void CheekFinAnimator::setRGB(uint8_t r, uint8_t g, uint8_t b) {
+	this->colorR = r;
+	this->colorG = g;
+	this->colorB = b;
+}
+
 void CheekFinAnimator::update() {
-	uint8_t setColor;
-	uint8_t clearColor;
+	// static float step = 15.0f;
+	// static bool printText = true;
+	// static absolute_time_t prevTime = nil_time;
 
-	this->ourString.clear();
+	// absolute_time_t currentTime = get_absolute_time();
+	int64_t currentUS = to_us_since_boot(get_absolute_time()) % ((int64_t)(ANIMATION_TIME * 1e6));
 
-	this->setSameOnBothCheeks(this->currentLED, false, GOLD_COLOR);
+	// if (printText) {
+	// 	myLogger.logDebug("Cheek anim running on core %d\n", get_core_num());
+	// 	printText = false;
+	// }
 
-	if (this->currentLED < 15)
-		this->currentLED++;
-	else
-		this->currentLED = 0;
+	for (int ii = 0; ii < LEDS_PER_PANEL; ii++) {
+		float thisStep = this->animationFunction(currentUS, ii);
+		uint8_t goldR = this->colorR * thisStep;
+		uint8_t goldG = this->colorG * thisStep;
+		uint8_t goldB = this->colorB * thisStep;
+		this->setSameOnBothCheeks(ii, true, goldR, goldG, goldB);
+	}
+
+	// step -= 0.01f;
+
+	// if (step < 0.0f) {
+	// 	step = 15.0f;
+	// }
 
 	ourString.display();
 }

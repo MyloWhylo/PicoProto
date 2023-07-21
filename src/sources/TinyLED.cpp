@@ -22,7 +22,7 @@ TinyLED::TinyLED(bool PWM) {
 			gpio_init(this->pins[ii]);
 			gpio_put(this->pins[ii], 1 * PICO_DEFAULT_LED_PIN_INVERTED);
 		}
-		
+
 		gpio_set_dir(this->pins[ii], true);
 		gpio_set_drive_strength(this->pins[ii], GPIO_DRIVE_STRENGTH_12MA);
 	}

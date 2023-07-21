@@ -4,14 +4,14 @@
 
 #include <stdio.h>
 
+#include "HiFiProtogenPinout.hpp"
 #include "Logger.hpp"
-#include "hardware/resets.h"
 #include "hardware/gpio.h"
+#include "hardware/resets.h"
 #include "hardware/spi.h"
-#include "pico/sync.h"
 #include "pico/bit_ops.h"
 #include "pico/stdlib.h"
-#include "HiFiProtogenPinout.hpp"
+#include "pico/sync.h"
 
 #define EYE_PANELS 2
 #define NOSE_PANELS 1
@@ -20,7 +20,7 @@
 
 #define NUM_PANELS (EYE_PANELS + NOSE_PANELS + MOUTH_PANELS) * SIDES
 
-#define SPI_BAUDRATE 1000000
+#define SPI_BAUDRATE 10000000
 
 // #define NUM_PANELS 7
 #define ROWS_PER_PANEL 8

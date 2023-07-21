@@ -18,6 +18,7 @@ void Logger::log(const char *fmt, ...) {
 }
 
 void Logger::logDebug(const char *fmt, ...) {
+#ifndef NDEBUG
 	if (this->currentLevel < debug) return;
 	printf("\x1b[32m");
 
@@ -25,9 +26,13 @@ void Logger::logDebug(const char *fmt, ...) {
 	va_start(args, fmt);
 	vprintf(fmt, args);
 	va_end(args);
+#else
+	return;
+#endif
 }
 
 void Logger::logTrace(const char *fmt, ...) {
+#ifndef NDEBUG
 	if (this->currentLevel < trace) return;
 	printf("\x1b[33m");
 
@@ -35,9 +40,13 @@ void Logger::logTrace(const char *fmt, ...) {
 	va_start(args, fmt);
 	vprintf(fmt, args);
 	va_end(args);
+#else
+	return;
+#endif
 }
 
 void Logger::logAbsurd(const char *fmt, ...) {
+#ifndef NDEBUG
 	if (this->currentLevel < absurd) return;
 	printf("\x1b[31m");
 
@@ -45,6 +54,13 @@ void Logger::logAbsurd(const char *fmt, ...) {
 	va_start(args, fmt);
 	vprintf(fmt, args);
 	va_end(args);
+#else
+	return;
+#endif
 }
 
-Logger myLogger(trace);
+#ifndef NDEBUG
+Logger myLogger(debug);
+#else
+Logger myLogger(info);
+#endif
