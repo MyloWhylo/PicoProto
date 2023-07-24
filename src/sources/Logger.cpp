@@ -60,7 +60,7 @@ void Logger::logAbsurd(const char *fmt, ...) {
 }
 
 #ifndef NDEBUG
-Logger myLogger(debug);
+Logger myLogger(trace);
 #else
 Logger myLogger(info);
 #endif

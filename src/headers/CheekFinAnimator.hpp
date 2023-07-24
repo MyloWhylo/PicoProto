@@ -47,7 +47,7 @@ class CheekFinAnimator {
 	void setRightCheekColor(uint led, bool respectFront, uint8_t r, uint8_t g, uint8_t b);
 	void setLeftCheekColor(uint led, bool respectFront, uint8_t r, uint8_t g, uint8_t b);
 
-	inline float animationFunction(int64_t step, uint led);
+	inline float animationFunction(float step, uint led);
 
   public:
 	CheekFinAnimator();

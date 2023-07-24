@@ -10,6 +10,7 @@ extern Logger myLogger;  // Allows for different debug levels
 #include "hardware/gpio.h"
 #include "hardware/regs/rosc.h"
 #include "hardware/uart.h"
+#include "headers/APDS9960.hpp"
 #include "headers/CheekFinAnimator.hpp"
 #include "headers/Emotion.hpp"
 #include "headers/FanController.hpp"
@@ -19,11 +20,14 @@ extern Logger myLogger;  // Allows for different debug levels
 #include "headers/TinyLED.hpp"
 // #include "headers/Badger.hpp"
 // #include "headers/PolledBoopCode.hpp"
+#include "pico/multicore.h"
 #include "pico/stdlib.h"
+#include "pico/sync.h"
 #include "pico/time.h"
 
-Max7219Driver myDriver(1);  // Initialize with brightness 1
-FanController myFan(1);     // Initialize with fan on full
+Max7219Driver myDriver(7);  // Initialize with brightness 1
+FanController myFan(0.75);  // Initialize with fan on full
+APDS9960 myBoopSensor;
 
 CheekFinAnimator cheekAnim;
 TinyLED statusLED(true);
@@ -44,7 +48,7 @@ Animation glitchAnimation(glitchAnim, &currentAnim);  // glitchAnim is located i
 void seed_random_from_rosc();
 bool randomChangeToGlitch();
 
-// void core1Task();
+void core1Task();
 
 #define BOOTDONE_FLAG 0xA5
 
@@ -66,6 +70,21 @@ int main() {
 		}
 	}
 
+	if (myBoopSensor.begin(10, APDS9960_AGAIN_4X, APDS9960_ADDRESS, BOOP_I2C_INST, BOOP_SCL, BOOP_SDA)) {
+		myLogger.log("\nBoop sensor successfully initialized!\n");
+	} else {
+		myLogger.log("\nBoop sensor failed to initialize!");
+		while (true) {
+			statusLED.setColor(0.0f, 0.0f, 1.0f);
+			sleep_ms(500);
+			statusLED.setColor(0.0f, 0.0f, 0.0f);
+			sleep_ms(500);
+		}
+	}
+
+	myBoopSensor.enableProximity();
+	myBoopSensor.enableColor();
+
 	// while (!tud_cdc_connected()) {  // Wait for USB to connect
 	// 	sleep_ms(100);
 	// 	statusLED.setColor(1.0, 1.0, 0.0);
@@ -74,19 +93,19 @@ int main() {
 	// }
 
 	sleep_ms(1500);
-	cheekAnim.bootAnimation();
-	// multicore_launch_core1(core1Task);
+	// cheekAnim.bootAnimation();
+	multicore_launch_core1(core1Task);
 
-	// uint thing = multicore_fifo_pop_blocking();
-	// if (thing != BOOTDONE_FLAG) {
-	// 	myLogger.log("bootanimation failed!");
-	// 	while (true) {
-	// 		statusLED.setColor(1.0f, 0.0f, 0.0f);
-	// 		sleep_ms(250);
-	// 		statusLED.setColor(0.0f, 0.0f, 0.0f);
-	// 		sleep_ms(250);
-	// 	}
-	// }
+	uint thing = multicore_fifo_pop_blocking();
+	if (thing != BOOTDONE_FLAG) {
+		myLogger.log("bootanimation failed!");
+		while (true) {
+			statusLED.setColor(1.0f, 0.0f, 0.0f);
+			sleep_ms(250);
+			statusLED.setColor(0.0f, 0.0f, 0.0f);
+			sleep_ms(250);
+		}
+	}
 
 	statusLED.setColor(0.0f, 0.25f, 0.0f);
 
@@ -95,21 +114,46 @@ int main() {
 
 	absolute_time_t nextRandomGlitch;
 	bool randomGlitchScheduled = false;
+
+	uint16_t luxEMA = 0;
+	uint8_t boopEMA = myBoopSensor.readProximity();
+
+	const float luxEMAFactor = 0.1f;
+	const float boopEMAFactor = 0.1f;
+
+	uint16_t r, g, b, c;
+	while (!myBoopSensor.colorDataReady()) {
+	}
+
+	myBoopSensor.getColorData(&r, &g, &b, &c);
+	luxEMA = myBoopSensor.calculateLux(r, g, b);
+
 	while (true) {
-		cheekAnim.update();
+		if (myBoopSensor.colorDataReady()) {
+			myBoopSensor.getColorData(&r, &g, &b, &c);
+			luxEMA = ((1.0f - luxEMAFactor) * luxEMA) + (luxEMAFactor * myBoopSensor.calculateLux(r, g, b));
+		}
+
+		boopEMA = ((1.0f - boopEMAFactor) * boopEMA) + (boopEMAFactor * myBoopSensor.readProximity());
+		myLogger.log("lux: %u, boop: %u\n", luxEMA, boopEMA);
+
 		if (currentAnim == &Normal) {
-			if (!randomGlitchScheduled) {
-				uint32_t nextGlitch = (rand() & 0x2FFF) + 60000;
-				nextRandomGlitch = make_timeout_time_ms(nextGlitch);
-				myLogger.logDebug("setting next random glitch for %u ms in the future\n", nextGlitch);
-				randomGlitchScheduled = true;
+			if (boopEMA < 60) {
+				currentAnim = &VwV;
+				currentAnim->drawAll();
+				myDriver.display();
 			} else {
-				if (absolute_time_diff_us(nextRandomGlitch, get_absolute_time()) >= 0) {
-					while (randomChangeToGlitch()) {
-						tight_loop_contents;
+				if (!randomGlitchScheduled) {
+					uint32_t nextGlitch = (rand() & 0x2FFF) + 60000;
+					nextRandomGlitch = make_timeout_time_ms(nextGlitch);
+					myLogger.logDebug("setting next random glitch for %u ms in the future\n", nextGlitch);
+					randomGlitchScheduled = true;
+				} else {
+					if (absolute_time_diff_us(nextRandomGlitch, get_absolute_time()) >= 0) {
+						if (!randomChangeToGlitch()) {
+							randomGlitchScheduled = false;
+						}
 					}
-					sleep_ms(2000);
-					randomGlitchScheduled = false;
 				}
 			}
 		}
@@ -128,12 +172,12 @@ int main() {
 	}
 }
 
-// void core1Task() {
-// 	cheekAnim.bootAnimation();
-// 	multicore_fifo_push_blocking(BOOTDONE_FLAG);
-// 	while (1)
-// 		tight_loop_contents();
-// }
+void core1Task() {
+	cheekAnim.bootAnimation();
+	multicore_fifo_push_blocking(BOOTDONE_FLAG);
+	while (1)
+		tight_loop_contents();
+}
 
 // -------- Copied from the pi pico forum, seeds random from rosc --------
 void seed_random_from_rosc() {
