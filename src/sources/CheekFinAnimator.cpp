@@ -22,11 +22,11 @@ inline void CheekFinAnimator::setSameOnBothCheeks(int led, bool respectFront, ui
 	this->setRightCheekColor(led, respectFront, r, g, b);
 }
 
-void CheekFinAnimator::setRightCheekColor(uint led, bool respectFront, uint32_t hex) {
+inline void CheekFinAnimator::setRightCheekColor(uint led, bool respectFront, uint32_t hex) {
 	this->ourString.setPixel(led, hex);
 }
 
-void CheekFinAnimator::setLeftCheekColor(uint led, bool respectFront, uint32_t hex) {
+inline void CheekFinAnimator::setLeftCheekColor(uint led, bool respectFront, uint32_t hex) {
 	if (respectFront) {
 		if (led == 0)
 			this->ourString.setPixel(NUM_CHEEK_LEDS - LEDS_PER_PANEL, hex);
@@ -37,11 +37,11 @@ void CheekFinAnimator::setLeftCheekColor(uint led, bool respectFront, uint32_t h
 	}
 }
 
-void CheekFinAnimator::setRightCheekColor(uint led, bool respectFront, uint8_t r, uint8_t g, uint8_t b) {
+inline void CheekFinAnimator::setRightCheekColor(uint led, bool respectFront, uint8_t r, uint8_t g, uint8_t b) {
 	this->ourString.setPixel(led, r, g, b);
 }
 
-void CheekFinAnimator::setLeftCheekColor(uint led, bool respectFront, uint8_t r, uint8_t g, uint8_t b) {
+inline void CheekFinAnimator::setLeftCheekColor(uint led, bool respectFront, uint8_t r, uint8_t g, uint8_t b) {
 	if (respectFront) {
 		if (led == 0)
 			this->ourString.setPixel(NUM_CHEEK_LEDS - LEDS_PER_PANEL, r, g, b);
@@ -91,10 +91,10 @@ void CheekFinAnimator::bootAnimation() {
 		}
 	}
 
-	myLogger.logDebug("Cheek anim running on core %d\n", get_core_num());
-	myLogger.logTrace("Adding Repeating Timer\n");
-	this->thisPool = alarm_pool_create_with_unused_hardware_alarm(1);
-	alarm_pool_add_repeating_timer_ms(this->thisPool, -5, updateLEDs, this, &(this->thisTimer));  // Schedule emote cycle
+	// myLogger.logDebug("Cheek anim running on core %d\n", get_core_num());
+	// myLogger.logTrace("Adding Repeating Timer\n");
+	// this->thisPool = alarm_pool_create_with_unused_hardware_alarm(1);
+	// alarm_pool_add_repeating_timer_ms(this->thisPool, -5, updateLEDs, this, &(this->thisTimer));  // Schedule emote cycle
 
 	// sleep_ms(250);
 	// for (int ii = 0; ii < NUM_CHEEK_LEDS; ii++) {
@@ -106,8 +106,8 @@ void CheekFinAnimator::bootAnimation() {
 inline float CheekFinAnimator::animationFunction(float step, uint led) {
 	// float xVal = ((step + led) / ANIMATION_STEP_MAX);
 	float cosVal = cosf((M_PI * (step + led)) / 2.6666667f) / 2.0f;
-	// myLogger.logTrace("step %d, led %u\n", step, led);
-	// myLogger.logTrace("cosVal: %f\n", cosVal);
+	// myLogger.logAbsurd("step %f, led %u\n", step, led);
+	// myLogger.logAbsurd("cosVal: %f\n", cosVal + 0.5f);
 
 	return cosVal + 0.5f;
 }
@@ -119,37 +119,50 @@ void CheekFinAnimator::setRGB(uint8_t r, uint8_t g, uint8_t b) {
 }
 
 void CheekFinAnimator::update() {
-	static float step = 16.0f;
+	// static float step = 16.0f;
 	// static bool printText = true;
 	// static absolute_time_t prevTime = nil_time;
 
-	// absolute_time_t currentTime = get_absolute_time();
-	// int64_t currentUS = to_us_since_boot(get_absolute_time()) % ((int64_t)(ANIMATION_TIME * 1e6));
+	absolute_time_t currentTime = get_absolute_time();
+	float currentUS = to_us_since_boot(get_absolute_time()) / 1e6;
+
+	// if (this->ourString.isBusy()) return;
 
 	// if (printText) {
 	// 	myLogger.logDebug("Cheek anim running on core %d\n", get_core_num());
 	// 	printText = false;
 	// }
 
-	for (int ii = 0; ii < LEDS_PER_PANEL; ii++) {
-		float thisStep = this->animationFunction(step, ii);
+	// this->ourString.clear();
+
+	float currentStep = (fmodf(currentUS, this->animationCycleTime) * (ANIMATION_STEP_MAX / this->animationCycleTime));
+
+	if (this->direction == false) {
+		currentStep = ANIMATION_STEP_MAX - currentStep;
+	} 
+
+	for (uint ii = 0; ii < LEDS_PER_PANEL; ii++) {
+		float thisStep = this->animationFunction(currentStep, ii);
 		uint8_t goldR = this->colorR * thisStep;
 		uint8_t goldG = this->colorG * thisStep;
 		uint8_t goldB = this->colorB * thisStep;
 		this->setSameOnBothCheeks(ii, true, goldR, goldG, goldB);
 	}
 
-	step -= 0.01f;
+	// step -= 0.01f;
 
-	if (step < 0.0f) {
-		step = 16.0f;
-	}
+	// if (step < 0.0f) {
+	// 	step = 16.0f;
+	// }
 
 	ourString.display();
 }
 
-bool updateLEDs(repeating_timer_t* rt) {
-	CheekFinAnimator* ourAnimator = (CheekFinAnimator*)rt->user_data;
-	ourAnimator->update();
-	return true;
+
+void CheekFinAnimator::setCycleTime(float cycleTime) {
+	this->animationCycleTime = cycleTime;
+
+}
+void CheekFinAnimator::setDirection(bool clockwise){
+	this->direction = clockwise;
 }

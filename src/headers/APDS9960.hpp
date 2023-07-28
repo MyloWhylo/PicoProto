@@ -33,10 +33,11 @@
 
 #include "hardware/gpio.h"
 #include "hardware/i2c.h"
+#include "math.h"
 #include "pico/stdlib.h"
+#include "stdio.h"
 #include "pico/time.h"
 #include "stdint.h"
-#include "math.h"
 
 #define APDS9960_ADDRESS (0x39) /**< I2C Address */
 
@@ -229,15 +230,16 @@ class APDS9960 {
 	// I2CDevice *i2c_dev = NULL; ///< Pointer to I2C bus interface
 
 	i2c_inst_t *ourInst;
-  uint sclPin;
-  uint sdaPin;
+	uint sclPin;
+	uint sdaPin;
+  uint8_t address;
 
-	uint32_t read32(uint8_t reg);
-	uint16_t read16(uint8_t reg);
-	uint16_t read16R(uint8_t reg);
+	inline uint32_t read32(uint8_t reg);
+	inline uint16_t read16(uint8_t reg);
+	inline uint16_t read16R(uint8_t reg);
 
-	void write8(uint8_t reg, uint8_t value);
-	uint8_t read8(uint8_t reg);
+	inline void write8(uint8_t reg, uint8_t value);
+	inline uint8_t read8(uint8_t reg);
 
 	uint8_t gestCnt;
 
@@ -247,8 +249,8 @@ class APDS9960 {
 	uint8_t LCount;
 	uint8_t RCount;
 
-	uint8_t read(uint8_t reg, uint8_t *buf, uint8_t num);
-	void write(uint8_t reg, uint8_t *buf, uint8_t num);
+	inline uint8_t read(uint8_t reg, uint8_t *buf, uint8_t num);
+	inline void write(uint8_t reg, uint8_t *buf, uint8_t num);
 
 	struct enable {
 		// power on

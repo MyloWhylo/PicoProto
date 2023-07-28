@@ -9,68 +9,35 @@ extern Max7219Driver myDriver;
  * \param callback The function that drives the animation
  * \param currentEmote Pointer to the current emote
  */
-Animation::Animation(alarm_callback_t callback, Emotion** currentEmote) {
+Animation::Animation(Emotion** currentEmote) {
 	myLogger.logTrace("Constructing animation");
-	this->animationDriver = callback;
 	this->emote = currentEmote;
 
 	this->animRunning = false;
-
-	for (int ii = 0; ii < 8; ii++) {
-		this->clearTimer(ii);
-	}
 }
 
 Animation::~Animation() {
 	if (this->animRunning) this->stopAnimation();
 }
 
+void Animation::runAnimUpdate(){
+	return;
+}
+
 /* \brief Starts an animation after a delay.
  * \param msFromNow How many milliseconds in the future to schedule the animation for
  */
 void Animation::scheduleAnimation(uint32_t msFromNow) {
-	this->alarmID = add_alarm_in_ms(msFromNow, this->animationDriver, this, true);
+	this->scheduledFor = make_timeout_time_ms(msFromNow);
 	this->animScheduled = true;
-	myLogger.logTrace("Starting animation. Scheduled for %d ms from now, and has ID %d.\n", msFromNow, this->alarmID);
+	myLogger.logTrace("Starting animation. Scheduled for %d ms from now.\n", msFromNow);
 }
 
 /* \brief Stops the current animation.
  */
 void Animation::stopAnimation() {
-	if (this->isRunning()) {
-		cancel_alarm(this->alarmID);
-		this->alarmID = 0;
-	}
-}
-
-/* \brief Returns the value of a timer.
- * \param timer The index of the timer to get
- * \returns The value stored at that timer index (usually state number)
- */
-uint8_t Animation::getTimer(uint8_t timer) {
-	return this->animTimers[timer];
-}
-
-/* \brief Sets a timer to a specified value.
- * \param timer The index of the timer
- * \param value The value to set the timer to
- */
-void Animation::setTimer(uint8_t timer, uint8_t value) {
-	this->animTimers[timer] = value;
-}
-
-/* \brief Increments a timer.
- * \param timer The index of the timer
- */
-void Animation::incTimer(uint8_t timer) {
-	this->animTimers[timer]++;
-}
-
-/* \brief Clears a timer.
- * \param timer The index of the timer
- */
-void Animation::clearTimer(uint8_t timer) {
-	this->animTimers[timer] = 0;
+	this->animRunning = false;
+	this->animScheduled = false;
 }
 
 /* \brief Check if an animation is currently running.
@@ -80,20 +47,15 @@ bool Animation::isRunning() {
 	return this->animRunning;
 }
 
-/* \brief Sets the running status of the animation
- * \param status Whether the animation is running or not
- */
-void Animation::setRunning(bool status) {
-	this->animRunning = status;
-	if (status == false) {
-		this->animScheduled = false;
-		this->alarmID = 0;
-	}
-}
-
 /* \brief Check if an animation is scheduled to run. Note that the scheduled status only resets once the animation is finished.
  * \return Whether the animation is scheduled
  */
 bool Animation::isScheduled() {
 	return this->animScheduled;
+}
+
+void Animation::update() {
+	if (!this->animScheduled) return;
+	if (absolute_time_diff_us(this->scheduledFor, get_absolute_time()) < 0) return;
+	this->runAnimUpdate();
 }

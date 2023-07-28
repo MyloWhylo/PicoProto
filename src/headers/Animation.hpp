@@ -8,31 +8,27 @@
 #include "stdint.h"
 
 class Animation {
-  private:
-	alarm_callback_t animationDriver;
-	alarm_id_t alarmID;
+  protected:
+	Emotion** emote;
+	absolute_time_t scheduledFor = nil_time;
 
-	uint8_t animTimers[8];
 	volatile bool animRunning = false;
 	volatile bool animScheduled = false;
 
+	virtual void runAnimUpdate();
+
   public:
-	Emotion** emote;
-	Animation(alarm_callback_t callback, Emotion** currentEmote);
+
+	Animation(Emotion** currentEmote);
 	~Animation();
 
 	void scheduleAnimation(uint32_t msFromNow);
 	void stopAnimation();
 
-	bool isRunning();
-	void setRunning(bool status);
+	void update();
 
 	bool isScheduled();
-
-	uint8_t getTimer(uint8_t timer);
-	void setTimer(uint8_t timer, uint8_t value);
-	void incTimer(uint8_t timer);
-	void clearTimer(uint8_t timer);
+	bool isRunning();
 };
 
 #endif

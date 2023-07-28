@@ -10,7 +10,7 @@ Pixel::Pixel(uint8_t red, uint8_t green, uint8_t blue) {
 }
 
 void Pixel::setPixel(uint8_t red, uint8_t green, uint8_t blue, uint8_t white) {
-	myLogger.logTrace("Setting pixel to %d %d %d %d\n", red, green, blue, white);
+	myLogger.logAbsurd("Setting pixel to %d %d %d %d\n", red, green, blue, white);
 	this->rgbw = (red << 16) | (green << 24) | (blue << 8) | white;
 }
 
@@ -19,7 +19,7 @@ void Pixel::setPixel(uint8_t red, uint8_t green, uint8_t blue) {
 	// check to see if red, green, or blue is 0
 	// if so, there is no white led used
 	if (red == 0 || green == 0 || blue == 0) {
-		myLogger.logTrace("Setting pixel to %d %d %d %d\n", red, green, blue, 0);
+		myLogger.logAbsurd("Setting pixel to %d %d %d %d\n", red, green, blue, 0);
 		this->rgbw = ((red << 16) | (green << 24) | (blue << 8)) & 0xFFFFFF00;
 	} else {
 		if (red < green) {

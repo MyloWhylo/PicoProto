@@ -39,7 +39,7 @@ void PixelString::init() {
 	this->dmaChannel = dma_claim_unused_channel(true);
 	this->sm = pio_claim_unused_sm(this->pio, true);
 	sk6812Init(this->pio, this->sm, offset, PIXEL_CLOCK, pin);
-	this->timeBetweenFrames = (this->w * BITS_PER_PIXEL * PIXEL_TIME) + RESET_TIME;
+	this->timeBetweenFrames = (uint64_t) (this->w * BITS_PER_PIXEL * PIXEL_TIME) + RESET_TIME;
 	this->initializeDMA();
 }
 
@@ -78,8 +78,8 @@ void PixelString::setBrightness(uint newBright) {
 }
 
 void PixelString::display() {
-	if (absolute_time_diff_us(get_absolute_time(), this->nextFrameTime) <= 0) {
-		sleep_until(nextFrameTime);
+	while (((int64_t) to_us_since_boot(this->nextFrameTime) - (int64_t) to_us_since_boot(get_absolute_time())) > 0) {
+		tight_loop_contents;
 	}
 
 	Pixel* tmp = this->backPage;
@@ -87,7 +87,7 @@ void PixelString::display() {
 	this->frontPage = tmp;
 
 	dma_channel_set_read_addr(this->dmaChannel, this->frontPage, true);
-	this->nextFrameTime = make_timeout_time_us((uint64_t) this->timeBetweenFrames);
+	this->nextFrameTime = make_timeout_time_us(this->timeBetweenFrames);
 }
 
 bool PixelString::isBusy() {

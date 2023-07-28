@@ -17,7 +17,7 @@
 #define PIXEL_CLOCK 800000.0f
 #define PIXEL_TIME 1.2f
 #define BITS_PER_PIXEL 32
-#define RESET_TIME 80
+#define RESET_TIME 160.0f
 
 // default to pin 2 if the board doesn't have a default sk6812 pin defined
 #define sk6812_PIN 2
@@ -39,7 +39,7 @@ class PixelString {
 	Pixel* frontPage;
 	Pixel* backPage;
 
-	float timeBetweenFrames;
+	uint64_t timeBetweenFrames;
 	absolute_time_t nextFrameTime = nil_time;
 
 	float brightness = 1.0f;

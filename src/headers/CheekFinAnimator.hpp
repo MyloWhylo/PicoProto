@@ -15,7 +15,7 @@
 #define NUM_CHEEK_LEDS LEDS_PER_PANEL* NUM_CHEEK_PANELS
 #define MIDDLE_PIXEL LEDS_PER_PANEL / 2
 #define ANIMATION_TIME 3.0f
-#define ANIMATION_STEP_MAX 15.0f
+#define ANIMATION_STEP_MAX 16.0f
 
 // #define GOLD_COLOR 0xD4AF37
 // #define GOLD_COLOR_R 0xD4
@@ -39,13 +39,16 @@ class CheekFinAnimator {
 	uint8_t colorG = GOLD_COLOR_G;
 	uint8_t colorB = GOLD_COLOR_B;
 
+	float animationCycleTime = ANIMATION_TIME;
+	bool direction = false;
+
 	inline void setSameOnBothCheeks(int led, bool respectFront, uint32_t hex);
-	void setRightCheekColor(uint led, bool respectFront, uint32_t hex);
-	void setLeftCheekColor(uint led, bool respectFront, uint32_t hex);
+	inline void setRightCheekColor(uint led, bool respectFront, uint32_t hex);
+	inline void setLeftCheekColor(uint led, bool respectFront, uint32_t hex);
 
 	inline void setSameOnBothCheeks(int led, bool respectFront, uint8_t r, uint8_t g, uint8_t b);
-	void setRightCheekColor(uint led, bool respectFront, uint8_t r, uint8_t g, uint8_t b);
-	void setLeftCheekColor(uint led, bool respectFront, uint8_t r, uint8_t g, uint8_t b);
+	inline void setRightCheekColor(uint led, bool respectFront, uint8_t r, uint8_t g, uint8_t b);
+	inline void setLeftCheekColor(uint led, bool respectFront, uint8_t r, uint8_t g, uint8_t b);
 
 	inline float animationFunction(float step, uint led);
 
@@ -55,6 +58,8 @@ class CheekFinAnimator {
 	void update();
 
 	void setRGB(uint8_t r, uint8_t g, uint8_t b);
+	void setCycleTime(float cycleTime);
+	void setDirection(bool clockwise);
 
 	void bootAnimation();
 };

@@ -179,8 +179,12 @@ void Max7219Driver::display() {
  * \param brightness The brightness (0-15) you'd like to set
  */
 void Max7219Driver::setBrightness(uint8_t brightness) {
-	this->setAllDisplays(CMD_BRIGHTNESS, this->brightness);
-	this->brightness = brightness;
+	if (this->brightness == brightness)
+		return;
+	else {
+		this->brightness = brightness;
+		this->setAllDisplays(CMD_BRIGHTNESS, this->brightness);
+	}
 }
 
 /* \brief Gets the current brightness level

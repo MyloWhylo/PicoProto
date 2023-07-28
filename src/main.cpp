@@ -4,13 +4,16 @@
 #include "headers/Logger.hpp"
 extern Logger myLogger;  // Allows for different debug levels
 
-#include "BlinkAnim.hpp"
-#include "GlitchAnim.hpp"
+#include "Animations/BlinkAnim.hpp"
+#include "Animations/GlitchAnim.hpp"
+// #include "BlinkAnim.hpp"
+// #include "GlitchAnim.hpp"
 #include "Icons.hpp"
 #include "hardware/gpio.h"
 #include "hardware/regs/rosc.h"
 #include "hardware/uart.h"
 #include "headers/APDS9960.hpp"
+#include "headers/BoopSensor.hpp"
 #include "headers/CheekFinAnimator.hpp"
 #include "headers/Emotion.hpp"
 #include "headers/FanController.hpp"
@@ -25,9 +28,9 @@ extern Logger myLogger;  // Allows for different debug levels
 #include "pico/sync.h"
 #include "pico/time.h"
 
-Max7219Driver myDriver(7);  // Initialize with brightness 1
-FanController myFan(0.75);  // Initialize with fan on full
-APDS9960 myBoopSensor;
+Max7219Driver myDriver(1);   // Initialize with brightness 1
+FanController myFan(1.0);  // Initialize with fan on full
+// BoopSensor myBoopSensor;
 
 CheekFinAnimator cheekAnim;
 TinyLED statusLED(true);
@@ -42,8 +45,9 @@ Emotion allEmotes[] = {Normal, Suprise, VwV};
 Emotion *currentAnim = &Normal;
 uint8_t emote = 0;
 
-Animation blinkAnimation(blinkAnim, &currentAnim);    // blinkAnim is located in BlinkAnim.hpp
-Animation glitchAnimation(glitchAnim, &currentAnim);  // glitchAnim is located in glitchAnim.hpp
+BlinkAnimation blink(&currentAnim);    // blinkAnim is located in BlinkAnim.hpp
+GlitchAnimation glitch(&currentAnim);  // glitchAnim is located in GlitchAnim.hpp
+// Animation glitchAnimation(glitchAnim, &currentAnim);  // glitchAnim is located in glitchAnim.hpp
 
 void seed_random_from_rosc();
 bool randomChangeToGlitch();
@@ -53,6 +57,8 @@ void core1Task();
 #define BOOTDONE_FLAG 0xA5
 
 int main() {
+	// bool boopExists = false;
+
 	statusLED.setColor(1.0, 1.0, 0.0);
 	seed_random_from_rosc();  // Seed random for eye blinks
 	stdio_init_all();         // Initialize STDIO
@@ -70,42 +76,30 @@ int main() {
 		}
 	}
 
-	if (myBoopSensor.begin(10, APDS9960_AGAIN_4X, APDS9960_ADDRESS, BOOP_I2C_INST, BOOP_SCL, BOOP_SDA)) {
-		myLogger.log("\nBoop sensor successfully initialized!\n");
-	} else {
-		myLogger.log("\nBoop sensor failed to initialize!");
-		while (true) {
-			statusLED.setColor(0.0f, 0.0f, 1.0f);
-			sleep_ms(500);
-			statusLED.setColor(0.0f, 0.0f, 0.0f);
-			sleep_ms(500);
-		}
+// boopExists = myBoopSensor.begin();
+#ifndef NDEBUG
+	while (!tud_cdc_connected()) {  // Wait for USB to connect
+		sleep_ms(100);
+		statusLED.setColor(1.0, 1.0, 0.0);
+		sleep_ms(100);
+		statusLED.setColor(0.0, 0.0, 0.0);
 	}
-
-	myBoopSensor.enableProximity();
-	myBoopSensor.enableColor();
-
-	// while (!tud_cdc_connected()) {  // Wait for USB to connect
-	// 	sleep_ms(100);
-	// 	statusLED.setColor(1.0, 1.0, 0.0);
-	// 	sleep_ms(100);
-	// 	statusLED.setColor(0.0, 0.0, 0.0);
-	// }
+#endif
 
 	sleep_ms(1500);
-	// cheekAnim.bootAnimation();
-	multicore_launch_core1(core1Task);
+	cheekAnim.bootAnimation();
+	// multicore_launch_core1(core1Task);
 
-	uint thing = multicore_fifo_pop_blocking();
-	if (thing != BOOTDONE_FLAG) {
-		myLogger.log("bootanimation failed!");
-		while (true) {
-			statusLED.setColor(1.0f, 0.0f, 0.0f);
-			sleep_ms(250);
-			statusLED.setColor(0.0f, 0.0f, 0.0f);
-			sleep_ms(250);
-		}
-	}
+	// uint thing = multicore_fifo_pop_blocking();
+	// if (thing != BOOTDONE_FLAG) {
+	// 	myLogger.log("bootanimation failed!");
+	// 	while (true) {
+	// 		statusLED.setColor(1.0f, 0.0f, 0.0f);
+	// 		sleep_ms(250);
+	// 		statusLED.setColor(0.0f, 0.0f, 0.0f);
+	// 		sleep_ms(250);
+	// 	}
+	// }
 
 	statusLED.setColor(0.0f, 0.25f, 0.0f);
 
@@ -114,61 +108,81 @@ int main() {
 
 	absolute_time_t nextRandomGlitch;
 	bool randomGlitchScheduled = false;
+	Emotion *prevEmote;
 
-	uint16_t luxEMA = 0;
-	uint8_t boopEMA = myBoopSensor.readProximity();
-
-	const float luxEMAFactor = 0.1f;
-	const float boopEMAFactor = 0.1f;
-
-	uint16_t r, g, b, c;
-	while (!myBoopSensor.colorDataReady()) {
-	}
-
-	myBoopSensor.getColorData(&r, &g, &b, &c);
-	luxEMA = myBoopSensor.calculateLux(r, g, b);
+	bool runOnce = false;
 
 	while (true) {
-		if (myBoopSensor.colorDataReady()) {
-			myBoopSensor.getColorData(&r, &g, &b, &c);
-			luxEMA = ((1.0f - luxEMAFactor) * luxEMA) + (luxEMAFactor * myBoopSensor.calculateLux(r, g, b));
+		cheekAnim.update();
+
+		if (!glitch.isRunning()) {
+			blink.update();
 		}
 
-		boopEMA = ((1.0f - boopEMAFactor) * boopEMA) + (boopEMAFactor * myBoopSensor.readProximity());
-		myLogger.log("lux: %u, boop: %u\n", luxEMA, boopEMA);
+		glitch.update();
+
+		// if (boopExists) {
+		// 	myBoopSensor.update();
+		// 	myDriver.setBrightness(myBoopSensor.getBrightness());
+		// }
 
 		if (currentAnim == &Normal) {
-			if (boopEMA < 60) {
-				currentAnim = &VwV;
+			// if (myBoopSensor.isBooped()) {
+			// 	currentAnim = &VwV;
+			// 	currentAnim->drawAll();
+			// 	myDriver.display();
+			// }
+			// else {
+			if (!randomGlitchScheduled) {
+				uint32_t nextGlitch = (rand() & 0x2FFF) + 60000;
+				glitch.scheduleAnimation(nextGlitch);  // Start glitch animation
+				myLogger.logDebug("setting next random glitch for %u ms in the future\n", nextGlitch);
+				randomGlitchScheduled = true;
+			}
+			// }
+		}
+
+		if (currentAnim->canBlink && !blink.isScheduled()) {
+			int nextBlink = (rand() & 0x0FFF) + 2000;  // This is an awful random number generator. But, who cares.
+			myLogger.logDebug("setting next blink for %d ms in the future\n", nextBlink);
+			blink.scheduleAnimation(nextBlink);  // Start blink animation
+		}
+
+		if (currentAnim->canGlitch && !glitch.isScheduled()) {
+			int nextGlitch = (rand() & 0x03FF) + 1000;  // This is an awful random number generator. But, who cares.
+			myLogger.logDebug("setting next glitch for %d ms in the future\n", nextGlitch);
+			glitch.scheduleAnimation(nextGlitch);  // Start glitch animation
+		}
+
+		if (glitch.isRunning()) {
+			if (runOnce == false) {
+				prevEmote = currentAnim;
+				currentAnim = &Suprise;
+
+				currentAnim->drawEyes();
+				myDriver.display();
+
+				cheekAnim.setRGB(255, 0, 0);
+				cheekAnim.setCycleTime(1.0f);
+				cheekAnim.setDirection(true);
+				
+				runOnce = true;
+			}
+		} else {
+			if (runOnce) {
+				currentAnim = prevEmote;
 				currentAnim->drawAll();
 				myDriver.display();
-			} else {
-				if (!randomGlitchScheduled) {
-					uint32_t nextGlitch = (rand() & 0x2FFF) + 60000;
-					nextRandomGlitch = make_timeout_time_ms(nextGlitch);
-					myLogger.logDebug("setting next random glitch for %u ms in the future\n", nextGlitch);
-					randomGlitchScheduled = true;
-				} else {
-					if (absolute_time_diff_us(nextRandomGlitch, get_absolute_time()) >= 0) {
-						if (!randomChangeToGlitch()) {
-							randomGlitchScheduled = false;
-						}
-					}
-				}
+
+				cheekAnim.setRGB(GOLD_COLOR_R, GOLD_COLOR_G, GOLD_COLOR_B);
+				cheekAnim.setCycleTime(ANIMATION_TIME);
+				cheekAnim.setDirection(false);
+				runOnce = false;
+				randomGlitchScheduled = false;
 			}
 		}
 
-		if (currentAnim->canBlink && !blinkAnimation.isScheduled()) {
-			int nextBlink = (rand() & 0x0FFF) + 2000;  // This is an awful random number generator. But, who cares.
-			myLogger.logDebug("setting next blink for %d ms in the future\n", nextBlink);
-			blinkAnimation.scheduleAnimation(nextBlink);  // Start blink animation
-		}
-
-		if (currentAnim->canGlitch && !glitchAnimation.isScheduled()) {
-			int nextGlitch = (rand() & 0x03FF) + 1000;  // This is an awful random number generator. But, who cares.
-			myLogger.logDebug("setting next glitch for %d ms in the future\n", nextGlitch);
-			glitchAnimation.scheduleAnimation(nextGlitch);  // Start glitch animation
-		}
+		// sleep_ms(50);
 	}
 }
 
@@ -197,32 +211,32 @@ void seed_random_from_rosc() {
 	srand(random);
 }
 
-bool randomChangeToGlitch() {
-	static bool glitchRan = false;
-	static Emotion *prevEmote;
+// bool randomChangeToGlitch() {
+// 	static bool glitchRan = false;
+// 	static Emotion *prevEmote;
 
-	if (glitchRan) {
-		if (!glitchAnimation.isScheduled()) {
-			currentAnim = prevEmote;
-			currentAnim->drawAll();
-			myDriver.display();
-			cheekAnim.setRGB(GOLD_COLOR_R, GOLD_COLOR_G, GOLD_COLOR_B);
-			glitchRan = false;
+// 	if (glitchRan) {
+// 		if (!glitch.isScheduled()) {
+// 			currentAnim = prevEmote;
+// 			currentAnim->drawAll();
+// 			myDriver.display();
+// 			cheekAnim.setRGB(GOLD_COLOR_R, GOLD_COLOR_G, GOLD_COLOR_B);
+// 			glitchRan = false;
 
-			return false;
-		}
-	} else {
-		prevEmote = currentAnim;
-		currentAnim = &Suprise;
+// 			return false;
+// 		}
+// 	} else {
+// 		prevEmote = currentAnim;
+// 		currentAnim = &Suprise;
 
-		currentAnim->drawAll();
-		myDriver.display();
+// 		currentAnim->drawAll();
+// 		myDriver.display();
 
-		cheekAnim.setRGB(255, 0, 0);
+// 		cheekAnim.setRGB(255, 0, 0);
 
-		glitchAnimation.scheduleAnimation(1000);
-		glitchRan = true;
-	}
+// 		glitch.scheduleAnimation(1000);
+// 		glitchRan = true;
+// 	}
 
-	return true;
-}
+// 	return true;
+// }
