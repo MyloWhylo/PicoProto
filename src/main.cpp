@@ -28,9 +28,9 @@ extern Logger myLogger;  // Allows for different debug levels
 #include "pico/sync.h"
 #include "pico/time.h"
 
-Max7219Driver myDriver(1);   // Initialize with brightness 1
-FanController myFan(1.0);  // Initialize with fan on full
-// BoopSensor myBoopSensor;
+Max7219Driver myDriver(1);  // Initialize with brightness 1
+FanController myFan(1.0);   // Initialize with fan on full
+BoopSensor myBoopSensor;
 
 CheekFinAnimator cheekAnim;
 TinyLED statusLED(true);
@@ -47,7 +47,6 @@ uint8_t emote = 0;
 
 BlinkAnimation blink(&currentAnim);    // blinkAnim is located in BlinkAnim.hpp
 GlitchAnimation glitch(&currentAnim);  // glitchAnim is located in GlitchAnim.hpp
-// Animation glitchAnimation(glitchAnim, &currentAnim);  // glitchAnim is located in glitchAnim.hpp
 
 void seed_random_from_rosc();
 bool randomChangeToGlitch();
@@ -57,7 +56,7 @@ void core1Task();
 #define BOOTDONE_FLAG 0xA5
 
 int main() {
-	// bool boopExists = false;
+	bool boopExists = false;
 
 	statusLED.setColor(1.0, 1.0, 0.0);
 	seed_random_from_rosc();  // Seed random for eye blinks
@@ -76,7 +75,6 @@ int main() {
 		}
 	}
 
-// boopExists = myBoopSensor.begin();
 #ifndef NDEBUG
 	while (!tud_cdc_connected()) {  // Wait for USB to connect
 		sleep_ms(100);
@@ -86,20 +84,9 @@ int main() {
 	}
 #endif
 
+	boopExists = myBoopSensor.begin();
 	sleep_ms(1500);
 	cheekAnim.bootAnimation();
-	// multicore_launch_core1(core1Task);
-
-	// uint thing = multicore_fifo_pop_blocking();
-	// if (thing != BOOTDONE_FLAG) {
-	// 	myLogger.log("bootanimation failed!");
-	// 	while (true) {
-	// 		statusLED.setColor(1.0f, 0.0f, 0.0f);
-	// 		sleep_ms(250);
-	// 		statusLED.setColor(0.0f, 0.0f, 0.0f);
-	// 		sleep_ms(250);
-	// 	}
-	// }
 
 	statusLED.setColor(0.0f, 0.25f, 0.0f);
 
@@ -121,25 +108,32 @@ int main() {
 
 		glitch.update();
 
-		// if (boopExists) {
-		// 	myBoopSensor.update();
-		// 	myDriver.setBrightness(myBoopSensor.getBrightness());
-		// }
+		if (boopExists) {
+			myBoopSensor.update();
+			myBoopSensor.getBrightness();
+			//myDriver.setBrightness(myBoopSensor.getBrightness());
+		}
 
 		if (currentAnim == &Normal) {
-			// if (myBoopSensor.isBooped()) {
-			// 	currentAnim = &VwV;
-			// 	currentAnim->drawAll();
-			// 	myDriver.display();
-			// }
-			// else {
-			if (!randomGlitchScheduled) {
-				uint32_t nextGlitch = (rand() & 0x2FFF) + 60000;
-				glitch.scheduleAnimation(nextGlitch);  // Start glitch animation
-				myLogger.logDebug("setting next random glitch for %u ms in the future\n", nextGlitch);
-				randomGlitchScheduled = true;
+			if (myBoopSensor.isBooped()) {
+				if (blink.isScheduled()) blink.stopAnimation();
+				currentAnim = &VwV;
+				currentAnim->drawAll();
+				myDriver.display();
+			} else {
+				if (!randomGlitchScheduled) {
+					uint32_t nextGlitch = (rand() & 0x2FFF) + 60000;
+					glitch.scheduleAnimation(nextGlitch);  // Start glitch animation
+					myLogger.logDebug("setting next random glitch for %u ms in the future\n", nextGlitch);
+					randomGlitchScheduled = true;
+				}
 			}
-			// }
+		} else if (currentAnim == &VwV) {
+			if (!myBoopSensor.isBooped()) {
+				currentAnim = &Normal;
+				currentAnim->drawAll();
+				myDriver.display();
+			}
 		}
 
 		if (currentAnim->canBlink && !blink.isScheduled()) {
@@ -165,7 +159,7 @@ int main() {
 				cheekAnim.setRGB(255, 0, 0);
 				cheekAnim.setCycleTime(1.0f);
 				cheekAnim.setDirection(true);
-				
+
 				runOnce = true;
 			}
 		} else {
@@ -210,33 +204,3 @@ void seed_random_from_rosc() {
 
 	srand(random);
 }
-
-// bool randomChangeToGlitch() {
-// 	static bool glitchRan = false;
-// 	static Emotion *prevEmote;
-
-// 	if (glitchRan) {
-// 		if (!glitch.isScheduled()) {
-// 			currentAnim = prevEmote;
-// 			currentAnim->drawAll();
-// 			myDriver.display();
-// 			cheekAnim.setRGB(GOLD_COLOR_R, GOLD_COLOR_G, GOLD_COLOR_B);
-// 			glitchRan = false;
-
-// 			return false;
-// 		}
-// 	} else {
-// 		prevEmote = currentAnim;
-// 		currentAnim = &Suprise;
-
-// 		currentAnim->drawAll();
-// 		myDriver.display();
-
-// 		cheekAnim.setRGB(255, 0, 0);
-
-// 		glitch.scheduleAnimation(1000);
-// 		glitchRan = true;
-// 	}
-
-// 	return true;
-// }

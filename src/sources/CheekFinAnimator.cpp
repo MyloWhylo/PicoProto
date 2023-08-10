@@ -104,11 +104,7 @@ void CheekFinAnimator::bootAnimation() {
 }
 
 inline float CheekFinAnimator::animationFunction(float step, uint led) {
-	// float xVal = ((step + led) / ANIMATION_STEP_MAX);
-	float cosVal = cosf((M_PI * (step + led)) / 2.6666667f) / 2.0f;
-	// myLogger.logAbsurd("step %f, led %u\n", step, led);
-	// myLogger.logAbsurd("cosVal: %f\n", cosVal + 0.5f);
-
+	float cosVal = cosf((M_PI * (step + led)) / (8.0f / 3.0f)) / 2.0f;
 	return cosVal + 0.5f;
 }
 
@@ -119,21 +115,8 @@ void CheekFinAnimator::setRGB(uint8_t r, uint8_t g, uint8_t b) {
 }
 
 void CheekFinAnimator::update() {
-	// static float step = 16.0f;
-	// static bool printText = true;
-	// static absolute_time_t prevTime = nil_time;
-
 	absolute_time_t currentTime = get_absolute_time();
 	float currentUS = to_us_since_boot(get_absolute_time()) / 1e6;
-
-	// if (this->ourString.isBusy()) return;
-
-	// if (printText) {
-	// 	myLogger.logDebug("Cheek anim running on core %d\n", get_core_num());
-	// 	printText = false;
-	// }
-
-	// this->ourString.clear();
 
 	float currentStep = (fmodf(currentUS, this->animationCycleTime) * (ANIMATION_STEP_MAX / this->animationCycleTime));
 
@@ -148,12 +131,6 @@ void CheekFinAnimator::update() {
 		uint8_t goldB = this->colorB * thisStep;
 		this->setSameOnBothCheeks(ii, true, goldR, goldG, goldB);
 	}
-
-	// step -= 0.01f;
-
-	// if (step < 0.0f) {
-	// 	step = 16.0f;
-	// }
 
 	ourString.display();
 }

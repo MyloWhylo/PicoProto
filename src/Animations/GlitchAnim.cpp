@@ -43,7 +43,7 @@ void GlitchAnimation::runAnimUpdate() {
 
 	myDriver.display();  // Display the updated maw on the displays
 
-	if (glitchStep < 4) {  // If the animation isn't done yet, increment timer and reschedule
+	if (glitchStep < GLITCH_NUM_STEPS) {  // If the animation isn't done yet, increment timer and reschedule
 		int32_t nextCycleTime = (((uint32_t) rand() & 0xFFFF) * 4) + GLITCH_BASE_TIME;
       nextStepTime = make_timeout_time_us(nextCycleTime);
       glitchStep++;
