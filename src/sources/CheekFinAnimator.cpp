@@ -143,3 +143,8 @@ void CheekFinAnimator::setCycleTime(float cycleTime) {
 void CheekFinAnimator::setDirection(bool clockwise){
 	this->direction = clockwise;
 }
+
+void CheekFinAnimator::clear() {
+	this->ourString.clear();
+	this->ourString.display();
+}

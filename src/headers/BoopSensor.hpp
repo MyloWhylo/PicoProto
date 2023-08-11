@@ -1,3 +1,6 @@
+#ifndef __BOOP_H
+#define __BOOP_H
+
 #include "APDS9960.hpp"
 #include "HiFiProtogenPinout.hpp"
 #include "Logger.hpp"
@@ -10,8 +13,12 @@ class BoopSensor {
 	float luxEMA = 0.0f;
 	float distEMA = 0.0f;
 
-	const float luxEMAFactor = 0.1;
+	const float luxEMAFactor = 0.005;
 	const float distEMAFactor = 0.1;
+
+	float boopThreshold = 40.0;
+
+	bool visorOn = false;
 
 	APDS9960 sensor;
 	bool exists = false;
@@ -24,5 +31,7 @@ class BoopSensor {
 
 	void update();
 	bool isBooped();
-	uint8_t getBrightness();
+	bool isVisorOn();
+	float getBrightness();
 };
+#endif

@@ -36,6 +36,7 @@ enum MaxCommand { CMD_NOOP = 0,
 
 class Max7219Driver {
   private:
+	bool displaysOn = false;
 	bool initializeSPI();
 	void destroySPI();
 	uint8_t brightness;
@@ -58,6 +59,8 @@ class Max7219Driver {
 	void setSegment(uint8_t row, uint8_t col, uint8_t value);
 	void displayBitmap(const uint8_t* icon, uint8_t width, uint8_t panelNum, bool flipHorizontal, bool flipVertical);
 	void display();
+	void turnOn();
+	void turnOff();
 };
 
 #endif

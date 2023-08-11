@@ -92,24 +92,31 @@ bool Max7219Driver::initializeDisplays() {
 	myLogger.logDebug("Initializing Array\n");
 
 	// Clear framebuffer
+	// displayArray[ROWS_PER_PANEL][NUM_PANELS * COLS_PER_PANEL]
 	for (uint_fast8_t ii = 0; ii < ROWS_PER_PANEL; ii++) {
 		for (uint_fast8_t jj = 0; jj < NUM_PANELS * COLS_PER_PANEL; jj++) {
-			this->setSegment(ii, jj, 0x00);
+			this->displayArray[ii][jj] = 0x00;
 		}
+	}
+
+	for (uint_fast8_t ii = 0; ii < NUM_PANELS; ii++) {
+		this->outputBuf[ii] = 0x00;
 	}
 
 	myLogger.logDebug("Initializing SPI\n");
 	retVal &= this->initializeSPI();  // Ensure SPI initializes properly
+	this->displaysOn = true;
 
 	myLogger.logDebug("Initializing displays...\n");
-	this->display();                                         // Clear the display registers
 	this->setAllDisplays(CMD_SHUTDOWN, 0);                   // Blank the displays
 	this->setAllDisplays(CMD_DISPLAYTEST, 0);                // Disable display test
 	this->setAllDisplays(CMD_DECODEMODE, 0);                 // Disable BCD decoding
 	this->setAllDisplays(CMD_BRIGHTNESS, this->brightness);  // Set display brightness
 	this->setAllDisplays(CMD_SCANLIMIT, 7);                  // Enable all rows
+	this->display();                                         // Clear the display registers
 	this->setAllDisplays(CMD_SHUTDOWN, 1);                   // Re-Enable displays
 
+	
 	return retVal;
 }
 
@@ -165,6 +172,8 @@ void Max7219Driver::display() {
 	// this->setAllDisplays(CMD_DECODEMODE, 0);                 // Disable BCD decoding
 	// this->setAllDisplays(CMD_BRIGHTNESS, this->brightness);  // Set display brightness
 
+	if (!this->displaysOn) return;
+
 	for (uint_fast8_t ii = 0; ii < ROWS_PER_PANEL; ii++) {
 		for (uint_fast8_t jj = 0; jj < NUM_PANELS; jj++) {
 			this->outputBuf[jj] = ((CMD_DIGIT_START + ii) << 8) | this->displayArray[ii][jj];
@@ -191,4 +200,18 @@ void Max7219Driver::setBrightness(uint8_t brightness) {
  */
 uint8_t Max7219Driver::getBrightness() {
 	return this->brightness;
+}
+
+void Max7219Driver::turnOn() {
+	if (this->displaysOn) return;
+
+	this->setAllDisplays(CMD_SHUTDOWN, 1);
+	this->displaysOn = true;
+}
+
+void Max7219Driver::turnOff() {
+	if (!this->displaysOn) return;
+
+	this->setAllDisplays(CMD_SHUTDOWN, 0);
+	this->displaysOn = false;
 }

@@ -51,9 +51,19 @@ GlitchAnimation glitch(&currentAnim);  // glitchAnim is located in GlitchAnim.hp
 void seed_random_from_rosc();
 bool randomChangeToGlitch();
 
-void core1Task();
+void normal_state();
+// void handle_glitch();
+// void handle_normal();
+// void handle_blink();
 
 #define BOOTDONE_FLAG 0xA5
+
+typedef enum {
+	INIT,
+	NORMAL,
+	VISOR_OFF,
+	VISOR_WAIT
+} LOOP_STATE;
 
 int main() {
 	bool boopExists = false;
@@ -86,12 +96,7 @@ int main() {
 
 	boopExists = myBoopSensor.begin();
 	sleep_ms(1500);
-	cheekAnim.bootAnimation();
-
 	statusLED.setColor(0.0f, 0.25f, 0.0f);
-
-	currentAnim->drawAll();  // Draw all of animation to framebuffer
-	myDriver.display();      // Display framebuffer on displays
 
 	absolute_time_t nextRandomGlitch;
 	bool randomGlitchScheduled = false;
@@ -99,92 +104,122 @@ int main() {
 
 	bool runOnce = false;
 
+	LOOP_STATE state = INIT;
 	while (true) {
-		cheekAnim.update();
+		switch (state) {
+			case INIT:
+				myFan.setSpeed(1.0f);
+				cheekAnim.bootAnimation();
 
-		if (!glitch.isRunning()) {
-			blink.update();
-		}
+				currentAnim->drawAll();  // Draw all of animation to framebuffer
+				myDriver.display();      // Display framebuffer on displays
+				myDriver.turnOn();
+				state = NORMAL;
+				break;
 
-		glitch.update();
+			case NORMAL:
+				cheekAnim.update();
 
-		if (boopExists) {
-			myBoopSensor.update();
-			myBoopSensor.getBrightness();
-			//myDriver.setBrightness(myBoopSensor.getBrightness());
-		}
-
-		if (currentAnim == &Normal) {
-			if (myBoopSensor.isBooped()) {
-				if (blink.isScheduled()) blink.stopAnimation();
-				currentAnim = &VwV;
-				currentAnim->drawAll();
-				myDriver.display();
-			} else {
-				if (!randomGlitchScheduled) {
-					uint32_t nextGlitch = (rand() & 0x2FFF) + 60000;
-					glitch.scheduleAnimation(nextGlitch);  // Start glitch animation
-					myLogger.logDebug("setting next random glitch for %u ms in the future\n", nextGlitch);
-					randomGlitchScheduled = true;
+				if (!glitch.isRunning()) {
+					blink.update();
 				}
-			}
-		} else if (currentAnim == &VwV) {
-			if (!myBoopSensor.isBooped()) {
-				currentAnim = &Normal;
-				currentAnim->drawAll();
-				myDriver.display();
-			}
+
+				glitch.update();
+
+				if (boopExists) {
+					myBoopSensor.update();
+					if (!myBoopSensor.isVisorOn()) {
+						state = VISOR_OFF;
+						break;
+					}
+
+					float brightness = myBoopSensor.getBrightness();
+					if (brightness >= 100.0f)
+						myDriver.setBrightness(15);
+					else
+						myDriver.setBrightness(0);
+				}
+
+				if (currentAnim == &Normal) {
+					if (myBoopSensor.isBooped()) {
+						if (blink.isScheduled()) blink.stopAnimation();
+						currentAnim = &VwV;
+						currentAnim->drawAll();
+						myDriver.display();
+					} else {
+						if (!randomGlitchScheduled) {
+							uint32_t nextGlitch = (rand() & 0x2FFF) + 60000;
+							glitch.scheduleAnimation(nextGlitch);  // Start glitch animation
+							myLogger.logDebug("setting next random glitch for %u ms in the future\n", nextGlitch);
+							randomGlitchScheduled = true;
+						}
+					}
+				} else if (currentAnim == &VwV) {
+					if (!myBoopSensor.isBooped()) {
+						currentAnim = &Normal;
+						currentAnim->drawAll();
+						myDriver.display();
+					}
+				}
+
+				if (currentAnim->canBlink && !blink.isScheduled()) {
+					int nextBlink = (rand() & 0x0FFF) + 2000;  // This is an awful random number generator. But, who cares.
+					myLogger.logDebug("setting next blink for %d ms in the future\n", nextBlink);
+					blink.scheduleAnimation(nextBlink);  // Start blink animation
+				}
+
+				if (currentAnim->canGlitch && !glitch.isScheduled()) {
+					int nextGlitch = (rand() & 0x03FF) + 1000;  // This is an awful random number generator. But, who cares.
+					myLogger.logDebug("setting next glitch for %d ms in the future\n", nextGlitch);
+					glitch.scheduleAnimation(nextGlitch);  // Start glitch animation
+				}
+
+				if (glitch.isRunning()) {
+					if (runOnce == false) {
+						prevEmote = currentAnim;
+						currentAnim = &Suprise;
+
+						currentAnim->drawEyes();
+						myDriver.display();
+
+						cheekAnim.setRGB(255, 0, 0);
+						cheekAnim.setCycleTime(1.0f);
+						cheekAnim.setDirection(true);
+
+						runOnce = true;
+					}
+				} else {
+					if (runOnce) {
+						currentAnim = prevEmote;
+						currentAnim->drawAll();
+						myDriver.display();
+
+						cheekAnim.setRGB(GOLD_COLOR_R, GOLD_COLOR_G, GOLD_COLOR_B);
+						cheekAnim.setCycleTime(ANIMATION_TIME);
+						cheekAnim.setDirection(false);
+						runOnce = false;
+						randomGlitchScheduled = false;
+					}
+				}
+				break;
+
+			case VISOR_OFF:
+				myFan.setSpeed(0);
+				myDriver.turnOff();
+				cheekAnim.clear();
+				state = VISOR_WAIT;
+				break;
+
+			case VISOR_WAIT:
+				myBoopSensor.update();
+				if (myBoopSensor.isVisorOn()) state = INIT;
+				break;
+
+			default:
+				state = INIT;
+				break;
 		}
-
-		if (currentAnim->canBlink && !blink.isScheduled()) {
-			int nextBlink = (rand() & 0x0FFF) + 2000;  // This is an awful random number generator. But, who cares.
-			myLogger.logDebug("setting next blink for %d ms in the future\n", nextBlink);
-			blink.scheduleAnimation(nextBlink);  // Start blink animation
-		}
-
-		if (currentAnim->canGlitch && !glitch.isScheduled()) {
-			int nextGlitch = (rand() & 0x03FF) + 1000;  // This is an awful random number generator. But, who cares.
-			myLogger.logDebug("setting next glitch for %d ms in the future\n", nextGlitch);
-			glitch.scheduleAnimation(nextGlitch);  // Start glitch animation
-		}
-
-		if (glitch.isRunning()) {
-			if (runOnce == false) {
-				prevEmote = currentAnim;
-				currentAnim = &Suprise;
-
-				currentAnim->drawEyes();
-				myDriver.display();
-
-				cheekAnim.setRGB(255, 0, 0);
-				cheekAnim.setCycleTime(1.0f);
-				cheekAnim.setDirection(true);
-
-				runOnce = true;
-			}
-		} else {
-			if (runOnce) {
-				currentAnim = prevEmote;
-				currentAnim->drawAll();
-				myDriver.display();
-
-				cheekAnim.setRGB(GOLD_COLOR_R, GOLD_COLOR_G, GOLD_COLOR_B);
-				cheekAnim.setCycleTime(ANIMATION_TIME);
-				cheekAnim.setDirection(false);
-				runOnce = false;
-				randomGlitchScheduled = false;
-			}
-		}
-
-		// sleep_ms(50);
 	}
-}
-
-void core1Task() {
-	cheekAnim.bootAnimation();
-	multicore_fifo_push_blocking(BOOTDONE_FLAG);
-	while (1)
-		tight_loop_contents();
 }
 
 // -------- Copied from the pi pico forum, seeds random from rosc --------

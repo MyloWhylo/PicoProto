@@ -57,6 +57,8 @@ class CheekFinAnimator {
 	~CheekFinAnimator();
 	void update();
 
+	void clear();
+
 	void setRGB(uint8_t r, uint8_t g, uint8_t b);
 	void setCycleTime(float cycleTime);
 	void setDirection(bool clockwise);
