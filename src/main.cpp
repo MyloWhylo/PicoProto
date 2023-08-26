@@ -141,19 +141,19 @@ int main() {
 				}
 
 				if (currentAnim == &Normal) {
-					if (myBoopSensor.isBooped()) {
-						if (blink.isScheduled()) blink.stopAnimation();
-						currentAnim = &VwV;
-						currentAnim->drawAll();
-						myDriver.display();
-					} else {
+					// if (myBoopSensor.isBooped()) {
+					// 	if (blink.isScheduled()) blink.stopAnimation();
+					// 	currentAnim = &VwV;
+					// 	currentAnim->drawAll();
+					// 	myDriver.display();
+					// } else {
 						if (!randomGlitchScheduled) {
-							uint32_t nextGlitch = (rand() & 0x2FFF) + 60000;
+							uint32_t nextGlitch = (rand() & 0x2FFF) + 300000;
 							glitch.scheduleAnimation(nextGlitch);  // Start glitch animation
 							myLogger.logDebug("setting next random glitch for %u ms in the future\n", nextGlitch);
 							randomGlitchScheduled = true;
 						}
-					}
+					// }
 				} else if (currentAnim == &VwV) {
 					if (!myBoopSensor.isBooped()) {
 						currentAnim = &Normal;
@@ -168,11 +168,11 @@ int main() {
 					blink.scheduleAnimation(nextBlink);  // Start blink animation
 				}
 
-				if (currentAnim->canGlitch && !glitch.isScheduled()) {
-					int nextGlitch = (rand() & 0x03FF) + 1000;  // This is an awful random number generator. But, who cares.
-					myLogger.logDebug("setting next glitch for %d ms in the future\n", nextGlitch);
-					glitch.scheduleAnimation(nextGlitch);  // Start glitch animation
-				}
+				// if (currentAnim->canGlitch && !glitch.isScheduled()) {
+				// 	int nextGlitch = (rand() & 0x03FF) + 1000;  // This is an awful random number generator. But, who cares.
+				// 	myLogger.logDebug("setting next glitch for %d ms in the future\n", nextGlitch);
+				// 	glitch.scheduleAnimation(nextGlitch);  // Start glitch animation
+				// }
 
 				if (glitch.isRunning()) {
 					if (runOnce == false) {
