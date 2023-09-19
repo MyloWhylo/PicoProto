@@ -94,7 +94,7 @@ int main() {
 	}
 #endif
 
-	boopExists = myBoopSensor.begin();
+	// boopExists = myBoopSensor.begin();
 	sleep_ms(1500);
 	statusLED.setColor(0.0f, 0.25f, 0.0f);
 
@@ -126,19 +126,19 @@ int main() {
 
 				glitch.update();
 
-				if (boopExists) {
-					myBoopSensor.update();
-					if (!myBoopSensor.isVisorOn()) {
-						state = VISOR_OFF;
-						break;
-					}
+				// if (boopExists) {
+				// 	myBoopSensor.update();
+				// 	if (!myBoopSensor.isVisorOn()) {
+				// 		state = VISOR_OFF;
+				// 		break;
+				// 	}
 
-					float brightness = myBoopSensor.getBrightness();
-					if (brightness >= 100.0f)
-						myDriver.setBrightness(15);
-					else
-						myDriver.setBrightness(0);
-				}
+				// 	float brightness = myBoopSensor.getBrightness();
+				// 	if (brightness >= 100.0f)
+				// 		myDriver.setBrightness(15);
+				// 	else
+				// 		myDriver.setBrightness(0);
+				// }
 
 				if (currentAnim == &Normal) {
 					// if (myBoopSensor.isBooped()) {
