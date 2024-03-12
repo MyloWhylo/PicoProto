@@ -148,14 +148,6 @@ int main() {
 					}
 
 					float brightness = myBoopSensor.getBrightness();
-					uint32_t dispBright = (uint32_t) brightness;
-					dispBright = __rev(dispBright) >> 24;
-
-					if (dispBright > UINT16_MAX) dispBright = UINT16_MAX;
-
-					myDriver.setSegment(0, 6, dispBright & 0xFF);
-					myDriver.setSegment(1, 6, ((dispBright & 0xFF00) >> 8) & 0xFF);
-					myDriver.display();
 
 					if (brightness >= 100.0f)
 						myDriver.setBrightness(15);
