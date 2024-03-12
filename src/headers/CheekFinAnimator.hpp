@@ -17,6 +17,8 @@
 #define ANIMATION_TIME 3.0f
 #define ANIMATION_STEP_MAX 16.0f
 
+#define CHEEK_UPDATE_INTERVAL 1000000/120
+
 // #define GOLD_COLOR 0xD4AF37
 // #define GOLD_COLOR_R 0xD4
 // #define GOLD_COLOR_G 0xAF
@@ -34,6 +36,8 @@ class CheekFinAnimator {
 	PixelString ourString = PixelString(NUM_CHEEK_LEDS, CHEEK_RING_PIN, true);
 	repeating_timer_t thisTimer;
 	alarm_pool_t* thisPool;
+
+	absolute_time_t nextUpdateTime = nil_time;
 
 	uint8_t colorR = GOLD_COLOR_R;
 	uint8_t colorG = GOLD_COLOR_G;

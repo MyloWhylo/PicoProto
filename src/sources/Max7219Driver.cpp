@@ -26,15 +26,15 @@ void Max7219Driver::destroySPI() {
 
 // -------- I stole these from someone --------
 inline void Max7219Driver::setCS() {
-	asm volatile("nop \n nop \n nop");  // Delay to meet timing requirements
-	gpio_put(FACE_CS, 0);               // Enable CS line
-	asm volatile("nop \n nop \n nop");  // Delay to meet timing requirements
+	sleep_us(1);
+	gpio_put(FACE_CS, 0);  // Enable CS line
+	sleep_us(1);
 }
 
 inline void Max7219Driver::clearCS() {
-	asm volatile("nop \n nop \n nop");  // Delay to meet timing requirements
-	gpio_put(FACE_CS, 1);               // Disable CS line
-	asm volatile("nop \n nop \n nop");  // Delay to meet timing requirements
+	sleep_us(1);
+	gpio_put(FACE_CS, 1);  // Disable CS line
+	sleep_us(1);
 }
 
 /* \brief Writes the output buffer to the MAX panels.
@@ -80,6 +80,14 @@ bool Max7219Driver::initializeSPI() {
 	gpio_set_dir(FACE_CS, GPIO_OUT);
 	gpio_put(FACE_CS, 1);
 
+	gpio_set_drive_strength(FACE_CS, SPI_DRIVE_STRENGTH);
+	gpio_set_drive_strength(FACE_SCK, SPI_DRIVE_STRENGTH);
+	gpio_set_drive_strength(FACE_TX, DATA_DRIVE_STRENGTH);
+
+	gpio_set_slew_rate(FACE_CS, SPI_SLEW_RATE);
+	gpio_set_slew_rate(FACE_SCK, SPI_SLEW_RATE);
+	gpio_set_slew_rate(FACE_TX, SPI_SLEW_RATE);
+
 	myLogger.logTrace("SPI finished initializing!\n");
 	return true;
 }
@@ -93,9 +101,11 @@ bool Max7219Driver::initializeDisplays() {
 
 	// Clear framebuffer
 	// displayArray[ROWS_PER_PANEL][NUM_PANELS * COLS_PER_PANEL]
+
 	for (uint_fast8_t ii = 0; ii < ROWS_PER_PANEL; ii++) {
 		for (uint_fast8_t jj = 0; jj < NUM_PANELS * COLS_PER_PANEL; jj++) {
-			this->displayArray[ii][jj] = 0x00;
+			this->setSegment(ii, jj, 0);
+			this->displayWasUpdated[ii][jj] = true;  // Weird hack: force it to send everything on startup
 		}
 	}
 
@@ -116,7 +126,6 @@ bool Max7219Driver::initializeDisplays() {
 	this->display();                                         // Clear the display registers
 	this->setAllDisplays(CMD_SHUTDOWN, 1);                   // Re-Enable displays
 
-	
 	return retVal;
 }
 
@@ -126,7 +135,10 @@ bool Max7219Driver::initializeDisplays() {
  * \param value Bitfield for the LED state
  */
 void Max7219Driver::setSegment(uint8_t row, uint8_t col, uint8_t value) {
-	this->displayArray[row][col] = value;
+	if (this->displayArray[row][col] != value) {
+		this->displayArray[row][col] = value;
+		this->displayWasUpdated[row][col] = true;
+	}
 }
 
 /* \brief Displays a specified bitmap.
@@ -174,20 +186,38 @@ void Max7219Driver::display() {
 
 	if (!this->displaysOn) return;
 
-	for (uint_fast8_t ii = 0; ii < ROWS_PER_PANEL; ii++) {
-		for (uint_fast8_t jj = 0; jj < NUM_PANELS; jj++) {
-			this->outputBuf[jj] = ((CMD_DIGIT_START + ii) << 8) | this->displayArray[ii][jj];
+	for (uint_fast8_t row = 0; row < ROWS_PER_PANEL; row++) {
+#ifndef FORCE_ALL_PANEL_REFRESH
+		bool sendRow = false;
+
+		for (uint_fast8_t col = 0; col < NUM_PANELS; col++) {
+			if (this->displayWasUpdated[row][col]) {
+				this->outputBuf[col] = ((CMD_DIGIT_START + row) << 8) | this->displayArray[row][col];
+				this->displayWasUpdated[row][col] = false;
+				sendRow = true;
+			} else {
+				this->outputBuf[col] = 0;
+			}
+		}
+
+		if (sendRow) this->sendData();
+	}
+#else
+		for (uint_fast8_t col = 0; col < NUM_PANELS; col++) {
+			this->outputBuf[col] = ((CMD_DIGIT_START + row) << 8) | this->displayArray[row][col];
 		}
 		this->sendData();
 	}
-
-	// this->setAllDisplays(CMD_SHUTDOWN, 1);  // Re-Enable displays
+#endif
+	// this->setAllDisplays(CMD_SHUTDOWN, this->displaysOn);  // Re-Enable displays
 }
 
 /* \brief Sets the brightness on the displays
  * \param brightness The brightness (0-15) you'd like to set
  */
 void Max7219Driver::setBrightness(uint8_t brightness) {
+	if (brightness > 15) brightness = 15;
+
 	if (this->brightness == brightness)
 		return;
 	else {
@@ -214,4 +244,79 @@ void Max7219Driver::turnOff() {
 
 	this->setAllDisplays(CMD_SHUTDOWN, 0);
 	this->displaysOn = false;
+}
+
+void Max7219Driver::refreshSettings() {
+	this->setAllDisplays(CMD_DISPLAYTEST, 0);                // Disable display test
+	this->setAllDisplays(CMD_DECODEMODE, 0);                 // Disable BCD decoding
+	this->setAllDisplays(CMD_BRIGHTNESS, this->brightness);  // Set display brightness
+	this->setAllDisplays(CMD_SCANLIMIT, 7);                  // Enable all rows
+}
+
+void Max7219Driver::setPixel(uint8_t x, uint8_t y, bool on) {
+	if (x > NUM_PANELS * 8) return;
+	if (y > ROWS_PER_PANEL) return;
+
+	uint8_t panel_num = x / 8; // each panel is 8 pixels wide
+	uint8_t pixel_num = x % 8;
+	uint8_t current_row = this->displayArray[y][panel_num];
+
+	if (on) {
+		current_row |= (1 << (7 - pixel_num));
+	} else {
+		current_row &= ~(1 << (7 - pixel_num));
+	}
+}
+
+
+uint8_t Max7219Driver::drawCharacter(char c, uint8_t startX, uint8_t startY) {
+	// Make sure it's not below the range
+	uint8_t fontFirstChar = Font3x5[FONT_FIRST_CHAR_OFFSET];
+	if (c < fontFirstChar) return 0;
+	
+	c = c - fontFirstChar; // Move it down
+
+	// Make sure it's not above the range
+	uint8_t fontCharCount = Font3x5[FONT_CHAR_COUNT_OFFSET];
+	if (c > fontCharCount) return 0;
+
+
+	// Find the starting point for this character
+	size_t charStartOffset = FONT_CHAR_WIDTHS_OFFSET + fontCharCount;
+	for (size_t ii = 0; ii < c; ii++) {
+		charStartOffset += Font3x5[FONT_CHAR_WIDTHS_OFFSET + ii];
+	}
+
+
+	// Get width of character
+	uint8_t charWidth = Font3x5[FONT_CHAR_WIDTHS_OFFSET + c];
+
+	for (size_t xx = 0; xx < charWidth; xx++) {
+		uint8_t thisColumn = Font3x5[charStartOffset + xx];
+
+		for (size_t yy = 0; yy < 8; yy++) {
+			bool on = (thisColumn & (1 << yy)) != 0;
+			this->setPixel(startX + xx, startY + yy, on);
+		}
+	}
+
+	return charWidth;
+}
+
+void Max7219Driver::printf(uint8_t starting_panel, const char *fmt, ...) {
+	char textBuf[NUM_PANELS * 2];
+
+	va_list args;
+	va_start(args, fmt);
+	int len = vsnprintf(textBuf, sizeof(char) * (NUM_PANELS * 2), fmt, args);
+
+	uint8_t currentXPos = starting_panel * 8;
+	for (int ii = 0; ii < len; ii++) {
+		uint8_t charWidth = this->drawCharacter(textBuf[ii], currentXPos, 0);
+		currentXPos += charWidth;
+		for (int yy = 0; yy < 8; yy++) {
+			this->setPixel(currentXPos, yy, false);
+		}
+		currentXPos++;
+	}
 }

@@ -5,10 +5,10 @@
 #include "pico/time.h"
 #include "stdlib.h"
 
-#define GLITCH_BASE_TIME 250000
+#define GLITCH_BASE_TIME 500000
 #define GLITCH_STEP_INDEX 0
 #define GLITCH_START_INDEX 1
-#define GLITCH_NUM_STEPS 4
+#define GLITCH_NUM_STEPS 8
 
 class GlitchAnimation : public Animation {
   protected:

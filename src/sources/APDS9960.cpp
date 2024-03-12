@@ -39,6 +39,7 @@
 
 #include "../headers/APDS9960.hpp"
 
+#include "pico/error.h"
 #include "string.h"
 
 /*!
@@ -94,7 +95,22 @@ bool APDS9960::begin(uint16_t iTimeMS, apds9960AGain_t aGain,
 	gpio_set_function(this->sdaPin, GPIO_FUNC_I2C);
 
 	/* Make sure we're actually connected */
-	uint8_t x = read8(APDS9960_ID);
+	uint8_t id_reg = APDS9960_ID;
+	uint8_t x;
+	int retval;
+
+	// Doing this manually so that we can get the error code
+	retval = i2c_write_blocking_until(this->ourInst, this->address, &id_reg, 1, true, make_timeout_time_ms(1));
+	if (retval == PICO_ERROR_GENERIC || retval == PICO_ERROR_TIMEOUT) {
+		return false;
+	}
+
+	retval = i2c_read_blocking_until(this->ourInst, this->address, &x, 1, false, make_timeout_time_ms(1));
+	// If the device doesn't exist, return false
+	if (retval == PICO_ERROR_GENERIC || retval == PICO_ERROR_TIMEOUT) {
+		return false;
+	}
+
 	if (x != 0xAB) {
 		return false;
 	}

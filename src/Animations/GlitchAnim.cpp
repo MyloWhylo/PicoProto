@@ -10,7 +10,7 @@ void GlitchAnimation::runAnimUpdate() {
 
    if (absolute_time_diff_us(nextStepTime, get_absolute_time()) < 0) return;
 
-	switch (glitchStep) {
+	switch (glitchStep % 3) {
 		case 1:
 			this->animRunning = true;
 			startWithOne = rand() % 2;
@@ -44,7 +44,7 @@ void GlitchAnimation::runAnimUpdate() {
 	myDriver.display();  // Display the updated maw on the displays
 
 	if (glitchStep < GLITCH_NUM_STEPS) {  // If the animation isn't done yet, increment timer and reschedule
-		int32_t nextCycleTime = (((uint32_t) rand() & 0xFFFF) * 4) + GLITCH_BASE_TIME;
+		int32_t nextCycleTime = (((uint32_t) rand() & 0xFFFF) * 8) + GLITCH_BASE_TIME;
       nextStepTime = make_timeout_time_us(nextCycleTime);
       glitchStep++;
 		myLogger.logTrace("Next time: %u\n", nextCycleTime);

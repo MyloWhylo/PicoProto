@@ -28,15 +28,15 @@ extern Logger myLogger;  // Allows for different debug levels
 #include "pico/sync.h"
 #include "pico/time.h"
 
-Max7219Driver myDriver(1);  // Initialize with brightness 1
-FanController myFan(1.0);   // Initialize with fan on full
+Max7219Driver myDriver(15);  // Initialize with brightness 1
+FanController myFan(1.0);    // Initialize with fan on full
 BoopSensor myBoopSensor;
 
 CheekFinAnimator cheekAnim;
 TinyLED statusLED(true);
 
 // -------- Emotes for the face --------
-Emotion Normal("Normal", eye, nose, maw);
+Emotion Normal("Normal", Angry, nose, maw);
 Emotion Suprise("Suprised", Spooked, nose, maw, true, false);
 Emotion VwV("VwV", vwv, nose, maw, false, false);
 
@@ -62,7 +62,8 @@ typedef enum {
 	INIT,
 	NORMAL,
 	VISOR_OFF,
-	VISOR_WAIT
+	VISOR_WAIT,
+	VISOR_BRIGHT_TEST
 } LOOP_STATE;
 
 int main() {
@@ -95,6 +96,11 @@ int main() {
 #endif
 
 	boopExists = myBoopSensor.begin();
+	if (boopExists)
+		myLogger.logDebug("Boop Sensor Detected!\n");
+	else {
+		myLogger.logDebug("Boop Sensor does not exist!\n");
+	}
 	sleep_ms(1500);
 	statusLED.setColor(0.0f, 0.25f, 0.0f);
 
@@ -105,7 +111,15 @@ int main() {
 	bool runOnce = false;
 
 	LOOP_STATE state = INIT;
+
+	absolute_time_t nextDisplaySettingsRefresh = make_timeout_time_ms(100);
+
 	while (true) {
+		// if (absolute_time_diff_us(nextDisplaySettingsRefresh, get_absolute_time()) > 0) {
+		// 	myDriver.refreshSettings();
+		// 	nextDisplaySettingsRefresh = make_timeout_time_ms(100);
+		// }
+
 		switch (state) {
 			case INIT:
 				myFan.setSpeed(1.0f);
@@ -134,26 +148,35 @@ int main() {
 					}
 
 					float brightness = myBoopSensor.getBrightness();
+					uint32_t dispBright = (uint32_t) brightness;
+					dispBright = __rev(dispBright) >> 24;
+
+					if (dispBright > UINT16_MAX) dispBright = UINT16_MAX;
+
+					myDriver.setSegment(0, 6, dispBright & 0xFF);
+					myDriver.setSegment(1, 6, ((dispBright & 0xFF00) >> 8) & 0xFF);
+					myDriver.display();
+
 					if (brightness >= 100.0f)
 						myDriver.setBrightness(15);
 					else
-						myDriver.setBrightness(0);
+						myDriver.setBrightness(2);
 				}
 
 				if (currentAnim == &Normal) {
-					// if (myBoopSensor.isBooped()) {
-					// 	if (blink.isScheduled()) blink.stopAnimation();
-					// 	currentAnim = &VwV;
-					// 	currentAnim->drawAll();
-					// 	myDriver.display();
-					// } else {
+					if (myBoopSensor.isBooped()) {
+						if (blink.isScheduled()) blink.stopAnimation();
+						currentAnim = &VwV;
+						currentAnim->drawAll();
+						myDriver.display();
+					} else {
 						if (!randomGlitchScheduled) {
 							uint32_t nextGlitch = (rand() & 0x2FFF) + 300000;
 							glitch.scheduleAnimation(nextGlitch);  // Start glitch animation
 							myLogger.logDebug("setting next random glitch for %u ms in the future\n", nextGlitch);
 							randomGlitchScheduled = true;
 						}
-					// }
+					}
 				} else if (currentAnim == &VwV) {
 					if (!myBoopSensor.isBooped()) {
 						currentAnim = &Normal;

@@ -115,6 +115,12 @@ void CheekFinAnimator::setRGB(uint8_t r, uint8_t g, uint8_t b) {
 }
 
 void CheekFinAnimator::update() {
+	if (absolute_time_diff_us(this->nextUpdateTime, get_absolute_time()) < 0) {
+		return;
+	}
+	
+	this->nextUpdateTime = delayed_by_us(this->nextUpdateTime, CHEEK_UPDATE_INTERVAL);
+
 	absolute_time_t currentTime = get_absolute_time();
 	float currentUS = to_us_since_boot(get_absolute_time()) / 1e6;
 
